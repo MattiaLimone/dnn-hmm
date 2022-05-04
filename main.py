@@ -1,36 +1,34 @@
-from spafe.utils import vis
+import os
+from glob import glob
+
+import numpy as np
 
 import preprocessing.utils as utl
-from spafe.features.lpc import lpc, lpcc
+import pandas as pd
+from tqdm.auto import tqdm
+from typing import final
 
-# init input vars
-num_ceps = 13
-lifter = 0
-normalize = True
+MEL_COEF: final = 13
 
-# read wav
-sig, fs = utl.remove_silence('data/lisa/data/timit/raw/TIMIT/TEST/DR1/FAKS0/SA1.WAV')
-#fs, sig = scipy.io.wavfile.read("data/lisa/data/timit/raw/TIMIT/TEST/DR1/FAKS0/SA1.WAV")
+results = [y for x in os.walk("data/lisa/data/timit/raw/TIMIT/TRAIN") for y in glob(os.path.join(x[0], '*.WAV'))]
 
-# compute lpcs
-lpcs = lpc(sig=sig, fs=fs, num_ceps=num_ceps)
-# visualize features
-vis.visualize_features(lpcs, 'LPC Index', 'Frame Index')
+df_mfcc = pd.DataFrame(columns=[i for i in range(0, MEL_COEF*3*89)])
+mfccs = {"ciao": np.array([0, 0])}
+for path in tqdm(results):
+    filename = str(os.path.basename(path))
+    data, sr = utl.remove_silence(path=path, export_path="data/cleaned/train/")
+    mfcc = utl.extract_mfcc(signal=data, sr=sr, n_mfcc=MEL_COEF)
+    mfcc = mfcc.transpose()
+    mfccs[filename] = mfcc
+    #print(mfcc)
+    #print(type(mfcc))
+    #print(mfcc.shape)
+    #df_mfcc.loc[-1] = mfcc_flatten
 
-
-# visualize spectogram
-vis.spectogram(sig, fs)
-# compute lpccs
-lpccs = lpcc(sig=sig, fs=fs, num_ceps=num_ceps, lifter=lifter, normalize=normalize)
-# visualize features
-vis.visualize_features(lpccs, 'LPCC Index', 'Frame Index')
-
-print('LPC')
-print(lpcs)
-print('\n')
-print('LPCC')
-print(lpccs)
-print(len(lpccs[0]))
-
-
-
+np.savez("data/cleaned/train/mfccs", **mfccs)
+saved = np.load("data/cleaned/train/mfccs.npz")
+i = 0
+for key in saved:
+    if i % 100 == 0:
+        print(f"{key}: " + str(saved[key]))
+    i += 1
