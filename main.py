@@ -21,15 +21,12 @@ def speaker_label(filepath) -> str:
 
 
 results = [y for x in os.walk("data/lisa/data/timit/raw/TIMIT/") for y in glob(os.path.join(x[0], '*.WAV'))]
-mfccs = {}
+mfccs_train = {}
+mfccs_test = {}
 count_audio_speaker = 0
 for path in tqdm(results):
     filename = str(os.path.basename(path))
     speaker = speaker_label(path)
-    data, sr = utl.remove_silence(path=path, export_path="data/cleaned/train/")
-    mfcc = utl.extract_mfcc(signal=data, sr=sr, n_mfcc=MEL_COEF_NUM_DEFAULT)
-    mfcc = mfcc.transpose()
-    mfccs[filename] = mfcc
 
     if count_audio_speaker >= _AUDIO_PER_SPEAKER:
         # if we saved all the given speaker's audio MFCCs, then reset the counter since we're working with a new speaker
@@ -37,15 +34,22 @@ for path in tqdm(results):
 
     if count_audio_speaker < int(_AUDIO_PER_SPEAKER*TRAIN_PERCENTAGE):
         # TODO: insert in the train set with corresponding label
-        pass
+        data, sr = utl.remove_silence(path=path, export_path="data/cleaned/train/" + speaker + "/" + filename)
+        mfcc = utl.extract_mfcc(signal=data, sr=sr, n_mfcc=MEL_COEF_NUM_DEFAULT)
+        mfcc = mfcc.transpose()
+        mfccs_train[speaker + "/" + filename] = mfcc
     else:
         # TODO: insert in the test set with corresponding label
-        pass
+        data, sr = utl.remove_silence(path=path, export_path="data/cleaned/test/" + speaker + "/" + filename)
+        mfcc = utl.extract_mfcc(signal=data, sr=sr, n_mfcc=MEL_COEF_NUM_DEFAULT)
+        mfcc = mfcc.transpose()
+        mfccs_test[speaker + "/" + filename] = mfcc
     count_audio_speaker += 1
 
 # TODO: save both train and test set extracted MFCCs with corresponding labels
-np.savez("data/cleaned/train/mfccs", **mfccs)
-saved = np.load("data/cleaned/train/mfccs.npz")
+np.savez("data/cleaned/train/mfccs_train", **mfccs_train)
+np.savez("data/cleaned/train/mfccs_test", **mfccs_test)
+saved = np.load("data/cleaned/train/mfccs_train.npz")
 i = 0
 for key in saved:
     if i % 100 == 0:
