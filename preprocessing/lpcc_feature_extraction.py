@@ -8,7 +8,7 @@ lifter = 0
 normalize = True
 
 # read wav
-sig, fs = utl.remove_silence('data/lisa/data/timit/raw/TIMIT/TEST/DR1/FAKS0/SA1.WAV')
+sig, fs = utl.remove_silence('../data/lisa/data/timit/raw/TIMIT/TEST/DR1/FAKS0/SA1.WAV')
 
 # compute lpcs
 lpcs = lpc(sig=sig, fs=fs, num_ceps=num_ceps)
