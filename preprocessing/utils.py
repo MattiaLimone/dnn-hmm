@@ -5,7 +5,6 @@ import librosa
 import librosa.display
 from pydub import AudioSegment, silence
 import soundfile as sf
-from sklearn.decomposition import PCA
 from typing import final
 
 MEL_COEF_NUM_DEFAULT: final = 13
@@ -39,21 +38,5 @@ def remove_silence(path: str, export_path: str = 'export/'):
     return data, samplerate
 
 
-# Function to extract Mel Frequency Cepstral Coefficient and first order and second order mfcc
-def extract_mfcc(signal, sr, n_mfcc=MEL_COEF_NUM_DEFAULT, order=2):
-    mfccs = librosa.feature.mfcc(y=signal, n_mfcc=n_mfcc, sr=sr)
-    delta2_mfccs = librosa.feature.delta(mfccs, order=2)
-    delta_mfccs = librosa.feature.delta(mfccs)
-    mfccs_features = np.concatenate((mfccs, delta_mfccs, delta2_mfccs))
-    if order == 0:
-        return mfccs
-    if order == 1:
-        return mfccs_features
-    if order == 2:
-        return mfccs_features
 
 
-# data, sr = remove_silence('../data/lisa/data/timit/raw/TIMIT/TEST/DR1/FAKS0/SA1.WAV')
-# mfcc_feature = extract_mfcc(data, sr)
-# lpc_feature = extract_lpc(data, 5)
-# pca_features = extract_mfcc_pca_features(mfcc_feature)
