@@ -23,6 +23,7 @@ def speaker_label(filepath) -> str:
 results = [y for x in os.walk("data/lisa/data/timit/raw/TIMIT/") for y in glob(os.path.join(x[0], '*.WAV'))]
 mfccs_train = {}
 mfccs_test = {}
+acoustic_models = {}
 count_audio_speaker = 0
 for path in tqdm(results):
     filename = str(os.path.basename(path))
