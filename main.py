@@ -20,8 +20,8 @@ for path in tqdm(results):
     mfcc = utl.extract_mfcc(signal=data, sr=sr, n_mfcc=MEL_COEF)
     mfcc = mfcc.transpose()
     mfccs[filename] = mfcc
-    #print(mfcc)
-    #print(type(mfcc))
+    print(mfcc)
+    print(type(mfcc))
     #print(mfcc.shape)
     #df_mfcc.loc[-1] = mfcc_flatten
 

@@ -7,6 +7,7 @@ from pydub import AudioSegment, silence
 import soundfile as sf
 from sklearn.decomposition import PCA
 from typing import final
+import matplotlib.pyplot as plt
 
 MEL_COEF_NUM_DEFAULT: final = 13
 
@@ -44,13 +45,7 @@ def extract_mfcc(signal, sr, n_mfcc=MEL_COEF_NUM_DEFAULT, order=2):
     delta2_mfccs = librosa.feature.delta(mfccs, order=2)
     delta_mfccs = librosa.feature.delta(mfccs)
     mfccs_features = np.concatenate((mfccs, delta_mfccs, delta2_mfccs))
-    if order == 0:
-        return mfccs
-    if order == 1:
-        return mfccs_features
-    if order == 2:
-        return mfccs_features
-    '''
+
     #Plot Mfccs
     plt.figure(figsize=(25, 10))
     librosa.display.specshow(mfccs,
@@ -72,7 +67,13 @@ def extract_mfcc(signal, sr, n_mfcc=MEL_COEF_NUM_DEFAULT, order=2):
                              sr=sr)
     plt.colorbar(format="%+2.f")
     plt.show()
-    '''
+    if order == 0:
+        return mfccs
+    if order == 1:
+        return mfccs_features
+    if order == 2:
+        return mfccs_features
+
 
 
 # Function to perform PCA over MFCC
