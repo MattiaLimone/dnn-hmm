@@ -5,6 +5,10 @@ import librosa
 import librosa.display
 from pydub import AudioSegment, silence
 import soundfile as sf
+from typing import final
+
+MEL_COEF_NUM_DEFAULT: final = 13
+TRAIN_PERCENTAGE: final = 0.75
 
 
 # Function to detect and remove the silence intervals where silence

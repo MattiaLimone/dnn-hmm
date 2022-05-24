@@ -2,7 +2,6 @@ import os
 from glob import glob
 import numpy as np
 import preprocessing.utils as utl
-import pandas as pd
 from tqdm.auto import tqdm
 from typing import final
 from preprocessing.utils import MEL_COEF_NUM_DEFAULT, TRAIN_PERCENTAGE

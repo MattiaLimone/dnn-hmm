@@ -1,4 +1,3 @@
-import numpy as np
 from spafe.features.lpc import lpcc
 
 NUM_CEPS = 13
