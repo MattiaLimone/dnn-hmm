@@ -7,7 +7,6 @@ from pydub import AudioSegment, silence
 import soundfile as sf
 from typing import final
 
-MEL_COEF_NUM_DEFAULT: final = 13
 TRAIN_PERCENTAGE: final = 0.75
 
 
