@@ -37,5 +37,35 @@ def remove_silence(path: str, export_path: str = 'export/'):
     return data, samplerate
 
 
+def fill_audio_frames(audio_frames: np.ndarray, target_len: int, mode: int = 0) -> np.ndarray:
+    """
+    Fills given audio frame array either with 0s or repeating the frames circularly.
 
+    :param audio_frames: audio frame array (with each frame either containing raw sampled audio data, MFCCs, LPCCs or
+                         any other kind of frame-level audio features) to fill until the target size.
+    :param mode: either 0 or 1, if 0 audio_frames will be filled with 0-valued frames, if 1 it will be filled repeating
+                 audio frames in a circular way.
+    :param target_len: target size of the output array.
 
+    :return: a new audio frame array filled until the target size.
+    """
+    if mode != 0 and mode != 1:
+        raise ValueError("Mode must be either 0 or 1.")
+
+    target_audio = np.copy(audio_frames)
+    frame_len = len(target_audio[0])
+    dist = target_len - len(target_audio)
+    added_frames = 0
+    fill_frame = None
+
+    while added_frames < dist:
+
+        if mode == 0:
+            fill_frame = np.zeros(shape=(1, frame_len))
+        if mode == 1:
+            fill_frame = np.reshape(np.array(audio_frames[added_frames % len(audio_frames)]), newshape=(1, frame_len))
+
+        target_audio = np.concatenate((target_audio, fill_frame), axis=0)
+        added_frames += 1
+
+    return target_audio

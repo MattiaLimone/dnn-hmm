@@ -6,7 +6,8 @@ import pandas as pd
 from tqdm.auto import tqdm
 import sys
 from glob import glob
-from mfcc import fill_audio_mfcc, MFCC_NUM_DEFAULT
+from mfcc import MFCC_NUM_DEFAULT
+from preprocessing.utils import fill_audio_frames
 
 np.set_printoptions(threshold=sys.maxsize)
 
@@ -33,7 +34,7 @@ for key in tqdm(mfccs):
 print(max_len)
 
 for key in tqdm(mfccs):
-    mfccs_filled[key] = fill_audio_mfcc(mfccs[key], max_len, 1)
+    mfccs_filled[key] = fill_audio_frames(mfccs[key], max_len, 1)
 
 # CONTROL FINAL SHAPE
 for key in tqdm(mfccs_filled):
