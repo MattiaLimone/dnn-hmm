@@ -23,36 +23,3 @@ def extract_lpcc(signal: np.ndarray, sr: int, n_lpcc: int = LPCC_NUM_DEFAULT) ->
 
     lpccs = lpcc(sig=signal, fs=sr, num_ceps=n_lpcc, lifter=_LIFTER, normalize=_NORMALIZE)
     return np.array(lpccs)
-
-
-def fill_audio_lpcc(audio_lpccs: np.ndarray, target_len: int, mode: int = 0) -> np.ndarray:
-    """
-    Fills given lpccs frame array either with 0s or repeating the coefficients circularly.
-
-    :param audio_lpccs: lpcc frames to fill until the target size.
-    :param mode: either 0 or 1, if 0 audio_lpccs will be filled with 0-valued frames, if 1 it will be filled repeating
-                 audio frames in a circular way.
-    :param target_len: target size of the output array.
-
-    :return: lpcc frames filled until the target size.
-    """
-    if mode != 0 and mode != 1:
-        raise ValueError("Mode must be either 0 or 1.")
-
-    target_audio = np.copy(audio_lpccs)
-    frame_len = len(target_audio[0])
-    dist = target_len - len(target_audio)
-    added_frames = 0
-    fill_frame = None
-
-    while added_frames < dist:
-
-        if mode == 0:
-            fill_frame = np.zeros(shape=(1, frame_len))
-        if mode == 1:
-            fill_frame = np.reshape(np.array(audio_lpccs[added_frames % len(audio_lpccs)]), newshape=(1, frame_len))
-
-        target_audio = np.concatenate((target_audio, fill_frame), axis=0)
-        added_frames += 1
-
-    return target_audio
