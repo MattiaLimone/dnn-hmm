@@ -4,12 +4,11 @@ from glob import glob
 from typing import final
 import numpy as np
 import pandas as pd
-import sklearn as sklearn
 from hmmlearn.hmm import GMMHMM
 from tqdm.auto import tqdm
 import preprocessing.utils as utl
-import sklearn as skl
 from utils import TRAIN_PERCENTAGE, MEL_COEF_NUM_DEFAULT
+import mfcc
 
 N_COMPONENTS: final = 5
 N_MIX: final = 4
@@ -122,7 +121,7 @@ train_set_lengths = np.zeros(1, dtype=int)
 for path in tqdm(results):
     filename = str(os.path.basename(path))
     data, sr = utl.remove_silence(path=path)
-    mfcc = utl.extract_mfcc(signal=data, sr=sr, n_mfcc=MEL_COEF_NUM_DEFAULT)
+    mfcc = mfcc.extract_mfcc(signal=data, sr=sr, n_mfcc=MEL_COEF_NUM_DEFAULT)
     mfcc = mfcc.transpose()
     train_set_lengths = np.append(train_set_lengths, len(mfcc))
     train_set_array = np.concatenate((train_set_array, mfcc), axis=0)
