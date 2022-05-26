@@ -4,7 +4,8 @@ import numpy as np
 import preprocessing.utils as utl
 from tqdm.auto import tqdm
 from typing import final
-from preprocessing.utils import MEL_COEF_NUM_DEFAULT, TRAIN_PERCENTAGE
+from preprocessing.utils import TRAIN_PERCENTAGE
+from preprocessing.features.mfcc import extract_mfcc, MFCC_NUM_DEFAULT
 
 _AUDIO_PER_SPEAKER: final = 10
 
@@ -35,13 +36,13 @@ for path in tqdm(results):
     if count_audio_speaker < int(_AUDIO_PER_SPEAKER*TRAIN_PERCENTAGE):
         # TODO: insert in the train set with corresponding label
         data, sr = utl.remove_silence(path=path, export_path="data/cleaned/train/" + speaker + "/" + filename)
-        mfcc = utl.extract_mfcc(signal=data, sr=sr, n_mfcc=MEL_COEF_NUM_DEFAULT)
+        mfcc = extract_mfcc(signal=data, sr=sr, n_mfcc=MFCC_NUM_DEFAULT)
         mfcc = mfcc.transpose()
         mfccs_train[speaker + "/" + filename] = mfcc
     else:
         # TODO: insert in the test set with corresponding label
         data, sr = utl.remove_silence(path=path, export_path="data/cleaned/test/" + speaker + "/" + filename)
-        mfcc = utl.extract_mfcc(signal=data, sr=sr, n_mfcc=MEL_COEF_NUM_DEFAULT)
+        mfcc = extract_mfcc(signal=data, sr=sr, n_mfcc=MFCC_NUM_DEFAULT)
         mfcc = mfcc.transpose()
         mfccs_test[speaker + "/" + filename] = mfcc
     count_audio_speaker += 1
