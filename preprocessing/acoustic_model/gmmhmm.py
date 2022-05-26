@@ -15,7 +15,7 @@ def gmm_hmm_grid_search(X: np.ndarray, sequence_lengths: np.ndarray = None, min_
     # TODO: complete function documentation
     """
     Perform grid search to fit the best GMM-HMM model on a given speaker's audio set.
-    :param X:
+    :param X: concatenated array of the MFCCs extracted by all speaker's audio frames
     :param sequence_lengths:
     :param min_state_number:
     :param max_state_number:
