@@ -11,21 +11,43 @@ N_ITER: final = 12
 
 def gmm_hmm_grid_search(X: np.ndarray, sequence_lengths: np.ndarray = None, min_state_number: int = 1,
                         max_state_number: int = 10, min_mix_number: int = 1, max_mix_number: int = 7,
-                        min_iter_number: int = 10, max_iter_number: int = 11, verbose=False):
-    # TODO: complete function documentation
+                        min_iter_number: int = 10, max_iter_number: int = 11, verbose: bool = False) -> (GMMHMM, list,
+                                                                                                         float):
     """
-    Perform grid search to fit the best GMM-HMM model on a given speaker's audio set.
-    :param X: concatenated array of the MFCCs extracted by all speaker's audio frames
-    :param sequence_lengths:
-    :param min_state_number:
-    :param max_state_number:
-    :param min_mix_number:
-    :param max_mix_number:
-    :param min_iter_number:
-    :param max_iter_number:
+    Perform grid search to fit the best GMM-HMM model on a given speaker's audio set
+
+    :param X: A Numpy Array. The concatenated array of the MFCCs extracted by all speaker's audio frames
+    :param sequence_lengths: A Numpy Array. The array of concatenated audio sequences
+    :param min_state_number: An integer. The minimum number of states for grid search
+    :param max_state_number: An integer. The maximum number of states for grid search
+    :param min_mix_number: An integer. The minimum number of Gaussian Mixtures for grid search
+    :param max_mix_number: An integer. The maximum number of Gaussian Mixtures for grid search
+    :param min_iter_number: An integer. The minimum number of iterations for grid search
+    :param max_iter_number: An integer. The maximum number of iterations for grid search
     :param verbose: if true, function logs info about each trained model
-    :return:
+    :return: trained GMM-HMM model representing the speaker's audio, the params used to train the model,
+            the score of the best model found.
     """
+    if min_state_number > max_state_number:
+        raise ValueError("Minimum state number must be less than or equal to maximum state number!")
+    if min_mix_number > max_mix_number:
+        raise ValueError("Minimum Gaussian mixture number must be less than or equal to "
+                         "maximum Gaussian mixture number!")
+    if min_iter_number > max_iter_number:
+        raise ValueError("Minimum iterations number must be less than or equal to maximum iterations number!")
+    if min_iter_number <= 0:
+        raise ValueError("Minimum iterations number must be strictly positive.")
+    if max_iter_number <= 0:
+        raise ValueError("Maximum iterations number must be strictly positive.")
+    if min_state_number <= 0:
+        raise ValueError("Minimum states number must be strictly positive.")
+    if max_state_number <= 0:
+        raise ValueError("Maximum states number must be strictly positive.")
+    if min_mix_number <= 0:
+        raise ValueError("Minimum Gaussian mixture number must be strictly positive.")
+    if max_state_number <= 0:
+        raise ValueError("Maximum Gaussian mixture number must be strictly positive.")
+
     n_audio_train = int(len(sequence_lengths) * TRAIN_PERCENTAGE)
     training_set_end = np.sum(sequence_lengths[:n_audio_train])
     train_set_grid_search = X[:training_set_end]
@@ -70,19 +92,27 @@ def gmm_hmm_grid_search(X: np.ndarray, sequence_lengths: np.ndarray = None, min_
 
 
 def generate_acoustic_model(X: np.ndarray, sequence_lengths: np.ndarray, n_components: int = N_COMPONENTS,
-                            n_mix: int = N_MIX, n_iter=N_ITER) -> (GMMHMM, list):
+                            n_mix: int = N_MIX, n_iter: int = N_ITER) -> (GMMHMM, list):
     """
     Fits an acoustic GMM-HMM model on the given audio, which gives a statistical representation of the speaker's audios
     MFCCs that can be used in speaker identification context.
-    :param X: concatenated array of the MFCCs extracted by all speaker's audio frames
-    :param sequence_lengths: array containing the frame number of each audio in X
-    :param n_components: number of HMM model states
-    :param n_mix: number of GMM mixtures for each HMM state
-    :param n_iter: max number of iterations of the EM algorithm used to train GMM-HMM model
+
+    :param X: A Numpy Array. The concatenated array of the MFCCs extracted by all speaker's audio frames
+    :param sequence_lengths: A Numpy Array. The array containing the frame number of each audio in X
+    :param n_components: An integer. The number of HMM model states
+    :param n_mix: An integer. The number of GMM mixtures for each HMM state
+    :param n_iter: An integer. The max number of iterations of the EM algorithm used to train GMM-HMM model
     :return: trained GMM-HMM model representing the speaker's audio, a list containing the viterbi-calculated most
              likely state sequence for each audio x in X (i.e. GMM-HMM state sequence y that maximizes P(y | x))
              audio in X.
     """
+    if n_components < 0:
+        raise ValueError("Components number must be positive.")
+    if n_mix < 0:
+        raise ValueError("The number of Gaussian mixtures  must be positive.")
+    if n_iter < 0:
+        raise ValueError("The number of iterations must be positive.")
+
     # train the GMM-HMM model on the given audios
     model = GMMHMM(n_components=n_components, covariance_type='diag', n_iter=n_iter, n_mix=n_mix)
     model.fit(X, sequence_lengths)
