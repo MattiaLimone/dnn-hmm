@@ -11,8 +11,8 @@ N_ITER: final = 12
 
 def gmm_hmm_grid_search(X: np.ndarray, sequence_lengths: np.ndarray = None, min_state_number: int = 1,
                         max_state_number: int = 10, min_mix_number: int = 1, max_mix_number: int = 7,
-                        min_iter_number: int = 10, max_iter_number: int = 11, verbose: bool = False) -> (GMMHMM, list,
-                                                                                                         float):
+                        min_iter_number: int = 10, max_iter_number: int = 11,
+                        verbose: bool = False) -> (GMMHMM, list, float):
     """
     Perform grid search to fit the best GMM-HMM model on a given speaker's audio set
 
