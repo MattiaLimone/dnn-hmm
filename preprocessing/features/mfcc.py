@@ -2,12 +2,10 @@ import numpy as np
 import librosa
 from typing import final
 
-
 MFCC_NUM_DEFAULT: final = 13
 DERIVATIVE_ORDER_DEFAULT: final = 2
 
 
-# Function to extract Mel Frequency Cepstral Coefficient and first order and second order mfcc
 def extract_mfcc(signal: np.ndarray, sr: int, n_mfcc=MFCC_NUM_DEFAULT, order=DERIVATIVE_ORDER_DEFAULT) -> np.ndarray:
     """
     Extracts mfccs for each frame of the given audio.
