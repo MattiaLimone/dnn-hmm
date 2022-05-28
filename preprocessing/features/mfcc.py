@@ -34,4 +34,4 @@ def extract_mfcc(signal: np.ndarray, sr: int, n_mfcc=MFCC_NUM_DEFAULT, order=DER
     for i in range(1, order + 1):
         mfccs_and_deltas = np.concatenate((mfccs_and_deltas, librosa.feature.delta(mfccs, order=order)))
 
-    return mfccs_and_deltas
+    return mfccs_and_deltas.transpose()
