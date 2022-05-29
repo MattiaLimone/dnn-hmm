@@ -7,6 +7,7 @@ from features.mfcc import extract_mfcc, MFCC_NUM_DEFAULT
 from features.lpcc import extract_lpcc, LPCC_NUM_DEFAULT
 from acoustic_model.gmmhmm import generate_acoustic_model
 import numpy as np
+import pandas as pd
 
 _DATASET_PATH: final = "data/lisa/data/timit/raw/TIMIT"
 _SPEAKER_DIR_REGEX: final = re.compile("[A-Z]{4}[0-9]")
@@ -151,22 +152,36 @@ def main():
     # Get audio paths, grouped by speaker
     _speakers_audios_filename(_DATASET_PATH, speakers_audios_names)
 
-    # Get max frame len, audio MFCCs, LPCCs for each speaker
+    # Get max frame len, audio MFCCs and LPCCs for each speaker
     speaker_audios_mfccs, speaker_audios_lpccs, max_frames = _speakers_audios_mfccs_lpccs_max_frames(
         speakers_audios_names
     )
 
     # Normalize length of all audio sequences
-    speaker_audios_lpcc_filled_zeros, speaker_audios_mfcc_filled_zeros, speaker_audios_lpcc_filled_circular, \
+    speaker_audios_mfcc_filled_zeros, speaker_audios_lpcc_filled_zeros, speaker_audios_lpcc_filled_circular, \
     speaker_audios_mfcc_filled_circular = _fill_all_speaker_audios(
-        speaker_audios_mfccs, speaker_audios_lpccs, max_frames
+        speaker_audios_mfccs,
+        speaker_audios_lpccs,
+        max_frames
     )
 
-    # TODO: construct acoustic models and extract frame-level labels for each variation of the features (mfccs, lpccs)
-    for speaker in speakers_audios_names:
-        # Flatten array of matrices
-        acoustic_model, states = generate_acoustic_model()
+    # Construct acoustic models and extract frame-level labels for each variation of the features (mfccs, lpccs)
+    acoustic_models_mfcc_filled_zeros, labels_mfcc_filled_zeros = _generate_speakers_acoustic_model(
+        speaker_audios_mfcc_filled_zeros
+    )
+    acoustic_models_lpcc_filled_zeros, labels_lpcc_filled_zeros = _generate_speakers_acoustic_model(
+        speaker_audios_lpcc_filled_zeros
+    )
+    acoustic_models_mfcc_filled_circular, labels_mfcc_filled_circular = _generate_speakers_acoustic_model(
+        speaker_audios_mfcc_filled_circular
+    )
+    acoustic_models_lpcc_filled_circular, labels_lpcc_filled_circular = _generate_speakers_acoustic_model(
+        speaker_audios_lpcc_filled_circular
+    )
 
     # TODO: save extracted features and labels to npz files
+    df = pd.DataFrame(columns=["Audio", "States"])
+
+
 if __name__ == "__main__":
     main()
