@@ -15,7 +15,7 @@ SEEK_STEP = 2
 
 def remove_silence(path: str, export_path: str = None):
     """
-   Removes each silence frame longer thatn MINIMUM_SILENCE_LENGTH and not louder than SILENCE_THRESHOLD by an audio file
+   Removes each silence frame longer than MINIMUM_SILENCE_LENGTH and not louder than SILENCE_THRESHOLD by an audio file
    from the given path, with a silence seek equal to SEEK_STEP, and then returns the silence-cleaned audio, exporting it
    to the export path (if given).
 
