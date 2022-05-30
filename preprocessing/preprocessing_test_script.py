@@ -9,6 +9,7 @@ from acoustic_model.gmmhmm import generate_acoustic_model
 import numpy as np
 import pandas as pd
 
+
 _DATASET_PATH: final = "data/lisa/data/timit/raw/TIMIT"
 _SPEAKER_DIR_REGEX: final = re.compile("[A-Z]{4}[0-9]")
 _AUDIO_REGEX: final = re.compile("(.*)\\.WAV")
@@ -146,6 +147,10 @@ def _generate_speakers_acoustic_model(speakers_audios_features: dict) -> (dict, 
     return acoustic_models, acoustic_model_state_labels
 
 
+def _one_hot_encode_state_labels(speakers_state_labels: dict):
+    return 0
+
+
 def main():
     speakers_audios_names = {}
 
@@ -179,7 +184,10 @@ def main():
         speaker_audios_lpcc_filled_circular
     )
 
-    # TODO: save extracted features and labels to npz files
+    # TODO: one-hot encode frame-level state labels, taking into account that each label must be
+    #  (n_states*speaker_index) + state_index
+
+    # TODO: save extracted features and labels to npz files in a suitable format for model training
     df = pd.DataFrame(columns=["Audio", "States"])
 
 
