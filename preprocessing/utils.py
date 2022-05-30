@@ -7,7 +7,7 @@ from pydub import AudioSegment, silence
 import soundfile as sf
 from typing import final
 
-TRAIN_PERCENTAGE: final = 0.75
+TRAIN_PERCENTAGE: final = 0.70
 MINIMUM_SILENCE_LENGTH: final = 500
 SILENCE_THRESHOLD: final = -16
 SEEK_STEP = 2
