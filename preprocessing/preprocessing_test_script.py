@@ -25,6 +25,13 @@ _RANDOM_SEED = 47
 
 
 def _generate_or_load_speaker_ordered_dict(speakers: list, generate: bool = False) -> dict:
+    """
+    Generates or loads from file an ordered dictionary of speaker:index pairs to be used in the one hot encoding process
+
+    :param speakers: A list of keys that represent each speaker
+    :param generate: A boolean. If True it generates the dictionary, otherwise it loads the dictionary from file
+    :return: An ordered dictionary speaker:index
+    """
     speaker_indexes = OrderedDict()
     generate_flag = generate
 
@@ -48,6 +55,15 @@ def _generate_or_load_speaker_ordered_dict(speakers: list, generate: bool = Fals
 
 
 def _speakers_audios_filename(path: str, speakers_audios: dict, visited: Optional[set] = None):
+    """
+    This recursive function will iterate over the dataset directory to extract the name of each speaker and store it
+    into a dictionary of speaker:path_to_audio_files pairs
+
+    :param path: A string. It's the path to the dataset root folder
+    :param speakers_audios: A dictionary in which all speaker-path_to_audio_file pairs will be stored
+    :param visited: A set. It's used to mark a specific path as already visited
+    :return: Void
+    """
     if visited is None:
         visited = set()
     basename = os.path.basename(path)
@@ -75,6 +91,13 @@ def _speakers_audios_filename(path: str, speakers_audios: dict, visited: Optiona
 
 
 def _speakers_audios_mfccs_lpccs_max_frames(speakers_audios_names: dict) -> (dict, dict, int):
+    """
+    Computes the maximum frames length of all audio, then it generates a dictionary of speaker-mfccs pairs
+    and a dictionary of speaker-lpccs pairs
+
+    :param speakers_audios_names: A dictionary of speaker-path_to_audio_files pairs
+    :return: A dictionary of speaker-mfccs pairs, a dictionary of speaker-lpccs pairs and the maximum frames length
+    """
     speaker_audios_mfccs = {}
     speaker_audios_lpccs = {}
     max_frames = 0
@@ -108,6 +131,16 @@ def _speakers_audios_mfccs_lpccs_max_frames(speakers_audios_names: dict) -> (dic
 
 def _fill_speakers_audios_features(speaker_audio_features: dict, max_frames: int, feature_num: int,
                                    mode: int = 0) -> dict:
+    """
+     Fills each given audio frame array of the inout dictionary either with 0s or repeating the frames circularly.
+
+    :param speaker_audio_features: A dictionary of speaker-mfccs/lpccs pairs
+    :param max_frames: An integer. The target length to normalize each audio
+    :param feature_num: An integer. Number of features calculated for each frame
+    :param mode: An integer, either 0 or 1, if 0 each frame will be filled with 0-valued frames, if 1 it will be
+                 filled repeating audio frames in a circular fashion.
+    :return: A normalized dictionary of speaker-mfccs/lpccs pairs
+    """
     speaker_audios_features_filled = {}
 
     for speaker in speaker_audio_features:
@@ -213,6 +246,15 @@ dict, dict, dict, dict):
 
 
 def _generate_speakers_acoustic_model(speakers_audios_features: dict) -> (dict, dict):
+    """
+    Generates a trained GMM-HMM model representing the speaker's audio for each speaker's audio and stores it in a
+    dictionary of speaker-acoustic_models pairs, a list containing the viterbi-calculated most likely state sequence
+    for each audio x in X (i.e. GMM-HMM state sequence y that maximizes P(y | x))audio in X and stores it in a
+    dictionary of speaker-acoustic_models_states pairs for each speaker's audio
+
+    :param speakers_audios_features:  A dictionary of speaker-mfccs/lpccs pairs
+    :return: A dictionary of speaker-acoustic_models pairs and a dictionary of speaker-acoustic_models_states pairs
+    """
     acoustic_models = {}
     acoustic_model_state_labels = {}
 
@@ -458,7 +500,6 @@ def main():
     df_lpcc_filled_zeros_test.to_pickle(_TRAIN_SET_PATH + "/lpccs_filled_zeros_test.pkl")
     df_mfcc_filled_circular_test.to_pickle(_TRAIN_SET_PATH + "/mfccs_filled_circular_test.pkl")
     df_lpcc_filled_circular_test.to_pickle(_TRAIN_SET_PATH + "/lpccs_filled_circular_test.pkl")
-
 
 if __name__ == "__main__":
     main()
