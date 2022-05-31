@@ -12,7 +12,6 @@ import pickle
 from collections import OrderedDict
 import sklearn as skl
 
-
 _DATASET_PATH: final = "data/lisa/data/timit/raw/TIMIT"
 _SPEAKER_INDEXES_PATH: final = "data/lisa/data/speakerindexes.pkl"
 _TRAIN_SET_PATH: final = "data/cleaned/train"
@@ -120,7 +119,6 @@ def _fill_speakers_audios_features(speaker_audio_features: dict, max_frames: int
 
         # For each audio of the speaker
         for speaker_audio in speaker_audios_features_filled[speaker]:
-
             # Fill with zero-value features or in a circular fashion based on the given mode
             filled_audio = utl.fill_audio_frames(speaker_audio, target_len=max_frames, mode=mode)
             speaker_audios_features_filled[speaker] = np.append(
@@ -135,7 +133,8 @@ def _fill_speakers_audios_features(speaker_audio_features: dict, max_frames: int
         return speaker_audios_features_filled
 
 
-def _fill_all_speaker_audios(speaker_audios_mfccs: dict, speaker_audios_lpccs: dict, max_frames: int) -> (dict, dict, dict, dict):
+def _fill_all_speaker_audios(speaker_audios_mfccs: dict, speaker_audios_lpccs: dict, max_frames: int) -> (
+dict, dict, dict, dict):
     speaker_audios_lpcc_filled_zeros = {}
     speaker_audios_mfcc_filled_zeros = {}
     speaker_audios_lpcc_filled_circular = {}
@@ -313,7 +312,6 @@ def _generate_output_dataframe(audios_feature_tensor: np.ndarray, one_hot_encode
 
     # For each audio feature matrix
     for i in range(0, len(audios_feature_tensor)):
-
         # Get feature matrix and state labels probabilities, putting them into a pandas dataframe
         df.loc[i] = (audios_feature_tensor[i], one_hot_encoded_labels[i])
 
@@ -334,13 +332,27 @@ def main():
         speakers_audios_names
     )
 
-    # Normalize length of all audio sequences
+    # Normalize length for MFCC
+    speaker_audios_mfcc_filled_zeros = _fill_speakers_audios_features(speaker_audios_mfccs, max_frames,
+                                                                      MFCC_NUM_DEFAULT, 0)
+    speaker_audios_mfcc_filled_circular = _fill_speakers_audios_features(speaker_audios_mfccs, max_frames,
+                                                                         LPCC_NUM_DEFAULT, 1)
+
+    # Normalize length for LPCC
+    speaker_audios_lpcc_filled_zeros = _fill_speakers_audios_features(speaker_audios_lpccs, max_frames,
+                                                                      MFCC_NUM_DEFAULT, 0)
+    speaker_audios_lpcc_filled_circular = _fill_speakers_audios_features(speaker_audios_lpccs, max_frames,
+                                                                         LPCC_NUM_DEFAULT, 1)
+
+    """
+     # Normalize length of all audio sequences
     speaker_audios_mfcc_filled_zeros, speaker_audios_lpcc_filled_zeros, speaker_audios_lpcc_filled_circular, \
     speaker_audios_mfcc_filled_circular = _fill_all_speaker_audios(
         speaker_audios_mfccs,
         speaker_audios_lpccs,
         max_frames
     )
+    """
 
     # Construct acoustic models and extract frame-level labels for each variation of the features (mfccs, lpccs)
     acoustic_models_mfcc_filled_zeros, labels_mfcc_filled_zeros = _generate_speakers_acoustic_model(
