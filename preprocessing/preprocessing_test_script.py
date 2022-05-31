@@ -107,7 +107,35 @@ def _speakers_audios_mfccs_lpccs_max_frames(speakers_audios_names: dict) -> (dic
             return speaker_audios_mfccs, speaker_audios_lpccs, max_frames
 
 
-def _fill_all_speaker_audios(speaker_audios_mfccs, speaker_audios_lpccs, max_frames) -> (dict, dict, dict, dict):
+def _fill_speakers_audios_features(speaker_audio_features: dict, max_frames: int, feature_num: int,
+                                   mode: int = 0) -> dict:
+    speaker_audios_features_filled = {}
+
+    for speaker in speaker_audio_features:
+        # Create empty numpy _AUDIO_PER_SPEAKER x max_frames x feature_num tensor to contain the filled audio features
+        speaker_audios_features_filled[speaker] = np.zeros(
+            shape=(1, max_frames, feature_num),
+            dtype=np.float64
+        )
+
+        # For each audio of the speaker
+        for speaker_audio in speaker_audios_features_filled[speaker]:
+
+            # Fill with zero-value features or in a circular fashion based on the given mode
+            filled_audio = utl.fill_audio_frames(speaker_audio, target_len=max_frames, mode=mode)
+            speaker_audios_features_filled[speaker] = np.append(
+                speaker_audios_features_filled[speaker],
+                filled_audio.reshape(shape=(1, max_frames, feature_num)),
+                axis=0
+            )
+
+        # Remove first, empty matrix from the result tensor
+        speaker_audios_features_filled[speaker] = speaker_audios_features_filled[speaker][1:]
+
+        return speaker_audios_features_filled
+
+
+def _fill_all_speaker_audios(speaker_audios_mfccs: dict, speaker_audios_lpccs: dict, max_frames: int) -> (dict, dict, dict, dict):
     speaker_audios_lpcc_filled_zeros = {}
     speaker_audios_mfcc_filled_zeros = {}
     speaker_audios_lpcc_filled_circular = {}
