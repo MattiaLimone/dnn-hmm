@@ -12,6 +12,7 @@ import pickle
 from collections import OrderedDict
 import sklearn as skl
 
+
 _DATASET_PATH: final = "data/lisa/data/timit/raw/TIMIT"
 _SPEAKER_INDEXES_PATH: final = "data/lisa/data/speakerindexes.pkl"
 _TRAIN_SET_PATH: final = "data/cleaned/train"
@@ -92,11 +93,11 @@ def _speakers_audios_filename(path: str, speakers_audios: dict, visited: Optiona
 
 def _speakers_audios_mfccs_lpccs_max_frames(speakers_audios_names: dict) -> (dict, dict, int):
     """
-    Computes the maximum frames length of all audio, then it generates a dictionary of speaker-mfccs pairs
-    and a dictionary of speaker-lpccs pairs
+    Computes the maximum frames length among all audios, then it generates a dictionary of speaker-MFCCs pairs
+    and a dictionary of speaker-LPCCs pairs for each audio.
 
     :param speakers_audios_names: A dictionary of speaker-path_to_audio_files pairs
-    :return: A dictionary of speaker-mfccs pairs, a dictionary of speaker-lpccs pairs and the maximum frames length
+    :return: A dictionary of speaker-MFCCs pairs, a dictionary of speaker-LPCCs pairs and the maximum frames length
     """
     speaker_audios_mfccs = {}
     speaker_audios_lpccs = {}
@@ -134,12 +135,12 @@ def _fill_speakers_audios_features(speaker_audio_features: dict, max_frames: int
     """
      Fills each given audio frame array of the inout dictionary either with 0s or repeating the frames circularly.
 
-    :param speaker_audio_features: A dictionary of speaker-mfccs/lpccs pairs
+    :param speaker_audio_features: A dictionary of speaker-MFCCs/LPCCs pairs
     :param max_frames: An integer. The target length to normalize each audio
     :param feature_num: An integer. Number of features calculated for each frame
     :param mode: An integer, either 0 or 1, if 0 each frame will be filled with 0-valued frames, if 1 it will be
                  filled repeating audio frames in a circular fashion.
-    :return: A normalized dictionary of speaker-mfccs/lpccs pairs
+    :return: A normalized dictionary of speaker-MFCCs/LPCCs pairs
     """
     speaker_audios_features_filled = {}
 
@@ -166,8 +167,8 @@ def _fill_speakers_audios_features(speaker_audio_features: dict, max_frames: int
         return speaker_audios_features_filled
 
 
-def _fill_all_speaker_audios(speaker_audios_mfccs: dict, speaker_audios_lpccs: dict, max_frames: int) -> (
-dict, dict, dict, dict):
+def _fill_all_speaker_audios(speaker_audios_mfccs: dict, speaker_audios_lpccs: dict, max_frames: int) -> (dict, dict,
+                                                                                                          dict, dict):
     speaker_audios_lpcc_filled_zeros = {}
     speaker_audios_mfcc_filled_zeros = {}
     speaker_audios_lpcc_filled_circular = {}
@@ -252,7 +253,7 @@ def _generate_speakers_acoustic_model(speakers_audios_features: dict) -> (dict, 
     for each audio x in X (i.e. GMM-HMM state sequence y that maximizes P(y | x))audio in X and stores it in a
     dictionary of speaker-acoustic_models_states pairs for each speaker's audio
 
-    :param speakers_audios_features:  A dictionary of speaker-mfccs/lpccs pairs
+    :param speakers_audios_features:  A dictionary of speaker-MFCCs/LPCCs pairs
     :return: A dictionary of speaker-acoustic_models pairs and a dictionary of speaker-acoustic_models_states pairs
     """
     acoustic_models = {}
@@ -374,17 +375,17 @@ def main():
         speakers_audios_names
     )
 
-    # Normalize length for MFCC
+    # Normalize length for MFCCs audio sequences
     speaker_audios_mfcc_filled_zeros = _fill_speakers_audios_features(speaker_audios_mfccs, max_frames,
-                                                                      MFCC_NUM_DEFAULT, 0)
+                                                                      MFCC_NUM_DEFAULT, mode=0)
     speaker_audios_mfcc_filled_circular = _fill_speakers_audios_features(speaker_audios_mfccs, max_frames,
-                                                                         LPCC_NUM_DEFAULT, 1)
+                                                                         LPCC_NUM_DEFAULT, mode=1)
 
-    # Normalize length for LPCC
+    # Normalize length for LPCCs audio sequences
     speaker_audios_lpcc_filled_zeros = _fill_speakers_audios_features(speaker_audios_lpccs, max_frames,
-                                                                      MFCC_NUM_DEFAULT, 0)
+                                                                      MFCC_NUM_DEFAULT, mode=0)
     speaker_audios_lpcc_filled_circular = _fill_speakers_audios_features(speaker_audios_lpccs, max_frames,
-                                                                         LPCC_NUM_DEFAULT, 1)
+                                                                         LPCC_NUM_DEFAULT, mode=1)
 
     """
      # Normalize length of all audio sequences
@@ -396,7 +397,7 @@ def main():
     )
     """
 
-    # Construct acoustic models and extract frame-level labels for each variation of the features (mfccs, lpccs)
+    # Construct acoustic models and extract frame-level labels for each variation of the features (MFCCs, LPCCs)
     acoustic_models_mfcc_filled_zeros, labels_mfcc_filled_zeros = _generate_speakers_acoustic_model(
         speaker_audios_mfcc_filled_zeros
     )
@@ -500,6 +501,7 @@ def main():
     df_lpcc_filled_zeros_test.to_pickle(_TRAIN_SET_PATH + "/lpccs_filled_zeros_test.pkl")
     df_mfcc_filled_circular_test.to_pickle(_TRAIN_SET_PATH + "/mfccs_filled_circular_test.pkl")
     df_lpcc_filled_circular_test.to_pickle(_TRAIN_SET_PATH + "/lpccs_filled_circular_test.pkl")
+
 
 if __name__ == "__main__":
     main()
