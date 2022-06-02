@@ -8,12 +8,12 @@ _NORMALIZE = True
 
 def extract_lpccs(signal: np.ndarray, sr: int, n_lpcc: int = LPCC_NUM_DEFAULT) -> np.ndarray:
     """
-        Extracts lpccs for each frame of the given audio.
+        Extracts LPCCs for each frame of the given audio.
 
-        :param signal: A Numpy Array. 1 x N audio signal to extract lpccs from.
+        :param signal: A Numpy Array. 1 x N audio signal to extract LPCCs from.
         :param sr: An integer. The sample rate of audio file to construct audio frames.
-        :param n_lpcc: An integer. The number of lpccs to compute (default LPCC_NUM_DEFAULT)
-        :return: a N x n_lpcc matrix containing lpccs for each of the given audio frames (created by sampling
+        :param n_lpcc: An integer. The number of LPCCs to compute (default LPCC_NUM_DEFAULT)
+        :return: a N x n_lpcc matrix containing LPCCs for each of the given audio frames (created by sampling
                  with sampling rate sr), where N = number of constructed frames.
         """
     if sr < 0:
