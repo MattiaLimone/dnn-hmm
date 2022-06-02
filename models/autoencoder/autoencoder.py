@@ -1,9 +1,6 @@
-from abc import ABC
-
-import kwargs as kwargs
 from keras.models import Sequential
 import keras
-from keras.layers import Dense, RepeatVector, TimeDistributed
+from keras.layers import Dense, TimeDistributed
 from typing import final, Optional, Union, Any
 
 ENCODER_MODEL_NAME: final = "Encoder"
