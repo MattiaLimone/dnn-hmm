@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 import preprocessing.utils as utl
-from preprocessing.features.mfcc import extract_mfcc, MFCC_NUM_DEFAULT
+from preprocessing.features.mel import extract_mfccs, MFCC_NUM_DEFAULT
 from gmmhmm import generate_acoustic_model, gmm_hmm_grid_search
 
 
@@ -24,7 +24,7 @@ train_set_lengths = np.zeros(1, dtype=int)
 for path in tqdm(results):
     filename = str(os.path.basename(path))
     data, sr = utl.remove_silence(path=path)
-    mfcc = extract_mfcc(signal=data, sr=sr, n_mfcc=MFCC_NUM_DEFAULT)
+    mfcc = extract_mfccs(signal=data, sr=sr, n_mfcc=MFCC_NUM_DEFAULT)
     mfcc = mfcc.transpose()
     train_set_lengths = np.append(train_set_lengths, len(mfcc))
     train_set_array = np.concatenate((train_set_array, mfcc), axis=0)

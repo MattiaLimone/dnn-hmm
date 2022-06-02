@@ -6,7 +6,7 @@ _LIFTER = 0
 _NORMALIZE = True
 
 
-def extract_lpcc(signal: np.ndarray, sr: int, n_lpcc: int = LPCC_NUM_DEFAULT) -> np.ndarray:
+def extract_lpccs(signal: np.ndarray, sr: int, n_lpcc: int = LPCC_NUM_DEFAULT) -> np.ndarray:
     """
         Extracts lpccs for each frame of the given audio.
 

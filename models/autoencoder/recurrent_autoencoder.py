@@ -1,22 +1,36 @@
+import kwargs as kwargs
 from keras.models import Sequential
-from keras.layers import LSTM, GRU, Dense, RepeatVector, TimeDistributed
+import keras
+from keras.layers import Dense, RepeatVector, TimeDistributed
 from typing import final, Optional
-
 
 _LAYER_NUM_DEFAULT: final = 3
 _LAYER_REDUCTION_FACTOR: final = 0.5
 _DEFAULT_INPUT_DIM: final = 256
 _UNIT_TYPES: final = {
-    "GRU": GRU,
-    "LSTM": LSTM
+    "GRU": keras.layers.GRU,
+    "LSTM": keras.layers.LSTM
 }
 
 
+# TODO: complete RecurrentEncoder class
+class RecurrentEncoder(keras.layers.Layer):
+    def __init__(self, name: str = None, **kwargs):
+        super(RecurrentEncoder, self).__init__(trainable=True, name=name, **kwargs)
+
+
+# TODO: complete RecurrentDecoder class
+class RecurrentDecoder(keras.layers.Layer):
+    def __init__(self, name: str = None, **kwargs):
+        super(RecurrentDecoder, self).__init__(trainable=True, name=name, **kwargs)
+
+
+# TODO: refactor and generalize RecurrentAutoEncoder
 class RecurrentAutoEncoder(Sequential):
     """
-    Generates a compiled LSTM or GRU autoencoder model. Most of the parameters used in keras LSTM/GRU can be passed to
-    this class.
+    This class represents an LSTM or GRU autoencoder model.
     """
+
     def __init__(self, n_encoding_layers: int = _LAYER_NUM_DEFAULT, input_neurons: int = _DEFAULT_INPUT_DIM,
                  timesteps=None, n_features=None, encoding_dims: Optional[list] = None,
                  sequential_bottleneck: bool = False, unit_type: str = "LSTM", activation='relu',
@@ -27,7 +41,7 @@ class RecurrentAutoEncoder(Sequential):
                  bias_constraint=None, return_sequences: bool = True, return_state: bool = False,
                  go_backwards: bool = False, stateful: bool = False, time_major: bool = False):
         """
-        Constructor
+        Constructor. Most of the parameters used in keras LSTM/GRU layers can be passed to this method .
 
         :param n_encoding_layers: Positive integer, dimensionality of the encoder/decoder
         :param input_neurons: Positive integer, dimensionality of the output space of the first layer
@@ -135,7 +149,7 @@ class RecurrentAutoEncoder(Sequential):
                     go_backwards=go_backwards,
                     stateful=stateful,
                     time_major=time_major
-                    )
+                )
                 )
             # otherwise it's an inner encoder layer without input_shape parameter
             else:
@@ -161,7 +175,7 @@ class RecurrentAutoEncoder(Sequential):
                     go_backwards=go_backwards,
                     stateful=stateful,
                     time_major=time_major
-                    )
+                )
                 )
         # Reversing layer dimensionality list to build the decoder specular to the encoder
         encoding_dims.reverse()
@@ -192,7 +206,7 @@ class RecurrentAutoEncoder(Sequential):
                 go_backwards=go_backwards,
                 stateful=stateful,
                 time_major=time_major
-                )
+            )
             )
         # Adding last layer that has the same size as the input of the network
         self.add(TimeDistributed(Dense(n_features)))
