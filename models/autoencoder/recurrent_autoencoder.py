@@ -13,15 +13,24 @@ _UNIT_TYPES: final = {
 }
 
 
+# TODO: complete RecurrentEncoder class
 class RecurrentEncoder(keras.layers.Layer):
     def __init__(self, name: str = None, **kwargs):
         super(RecurrentEncoder, self).__init__(trainable=True, name=name, **kwargs)
 
 
+# TODO: complete RecurrentDecoder class
+class RecurrentDecoder(keras.layers.Layer):
+    def __init__(self, name: str = None, **kwargs):
+        super(RecurrentDecoder, self).__init__(trainable=True, name=name, **kwargs)
+
+
+# TODO: refactor and generalize RecurrentAutoEncoder
 class RecurrentAutoEncoder(Sequential):
     """
     This class represents an LSTM or GRU autoencoder model.
     """
+
     def __init__(self, n_encoding_layers: int = _LAYER_NUM_DEFAULT, input_neurons: int = _DEFAULT_INPUT_DIM,
                  timesteps=None, n_features=None, encoding_dims: Optional[list] = None,
                  sequential_bottleneck: bool = False, unit_type: str = "LSTM", activation='relu',
@@ -140,7 +149,7 @@ class RecurrentAutoEncoder(Sequential):
                     go_backwards=go_backwards,
                     stateful=stateful,
                     time_major=time_major
-                    )
+                )
                 )
             # otherwise it's an inner encoder layer without input_shape parameter
             else:
@@ -166,7 +175,7 @@ class RecurrentAutoEncoder(Sequential):
                     go_backwards=go_backwards,
                     stateful=stateful,
                     time_major=time_major
-                    )
+                )
                 )
         # Reversing layer dimensionality list to build the decoder specular to the encoder
         encoding_dims.reverse()
@@ -197,7 +206,7 @@ class RecurrentAutoEncoder(Sequential):
                 go_backwards=go_backwards,
                 stateful=stateful,
                 time_major=time_major
-                )
+            )
             )
         # Adding last layer that has the same size as the input of the network
         self.add(TimeDistributed(Dense(n_features)))
