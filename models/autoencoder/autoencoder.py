@@ -16,7 +16,7 @@ class AutoEncoder(keras.models.Model):
 
     def __init__(self, n_features: int, encoder_layers: Iterable[Layer], bottleneck: Layer,
                  decoder_layers: Optional[Iterable[Layer]] = None, outputs_sequences: bool = False,
-                 input_shape: Optional[tuple] = None):
+                 input_shape: Optional[tuple[int]] = None):
         """
         Constructor. Instantiates a new autoencoder with the given encoder and decoder layers and builds it, if input
         shape is given.
@@ -41,7 +41,7 @@ class AutoEncoder(keras.models.Model):
             raise ValueError("Feature number must be strictly positive")
 
         if input_shape is not None and input_shape[-1] != n_features:
-            raise ValueError("Input shape must match with given feature number")
+            raise ValueError("Input shape last axis must match with given feature number")
 
         super(AutoEncoder, self).__init__()
         self._encoder = Sequential(name=ENCODER_MODEL_NAME)
