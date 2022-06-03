@@ -1,10 +1,12 @@
 from keras.models import Sequential
 import keras
-from keras.layers import Dense, TimeDistributed
-from typing import final, Optional, Union, Any
+from keras.layers import Dense, TimeDistributed, Layer, InputLayer
+from typing import final, Optional, Union, Any, Iterable
+
 
 ENCODER_MODEL_NAME: final = "Encoder"
 DECODER_MODEL_NAME: final = "Decoder"
+_DECODER_LAYER_DEFAULT_POSTFIX = "_decoder"
 
 
 class AutoEncoder(keras.models.Model):
@@ -12,48 +14,88 @@ class AutoEncoder(keras.models.Model):
     This class represents a generic autoencoder model, that can be constructed with any keras layer.
     """
 
-    def __init__(self, n_features: int, latent_space_dim: int, outputs_sequences: bool = False,
-                 is_symmetrical: bool = True, input_shape: Optional[tuple] = None, *layers: keras.layers.Layer):
+    def __init__(self, n_features: int, encoder_layers: Iterable[Layer], bottleneck: Layer,
+                 decoder_layers: Optional[Iterable[Layer]] = None, outputs_sequences: bool = False,
+                 input_shape: Optional[tuple] = None):
         """
-        Constructor. Instantiates a new AutoEncoder.
+        Constructor. Instantiates a new autoencoder with the given encoder and decoder layers and builds it, if input
+        shape is given.
 
+        :param n_features: an integer representing the number of input features.
+        :param encoder_layers: an iterable containing the encoder layers (no InputLayer must be given, or ValueError
+                               will be raised).
+        :param bottleneck: bottleneck layer which outputs the representation of the input vector in the latent space.
+        :param decoder_layers: an iterable containing the decoder layers (no InputLayer must be given, or ValueError
+                               will be raised); by default, this is None since the autoencoder structure is assumed to
+                               be symmetrical (hence encoder layers are copied in reverse order in decoder layers).
+        :param outputs_sequences: a boolean indicating whether or not the output of the network should be a sequence.
+        :param input_shape: a tuple representing the input shape; if not given, the model wont be built at its creation;
+                            it's worth noting that the last element of the shape must coincide with the n_features
+                            parameter, otherwise ValueError will be raised.
+
+        :raises ValueError: if given n_features is less than 1, if input_shape last element does not coincide with
+                            n_features or if one of the layers contained in encoder_layers or decoder_layers is an
+                            instance of InputLayer.
         """
+        if n_features < 1:
+            raise ValueError("Feature number must be strictly positive")
+
+        if input_shape is not None and input_shape[-1] != n_features:
+            raise ValueError("Input shape must match with given feature number")
+
         super(AutoEncoder, self).__init__()
         self._encoder = Sequential(name=ENCODER_MODEL_NAME)
         self._decoder = Sequential(name=DECODER_MODEL_NAME)
-        self._latent_space_dim = latent_space_dim
+        self._latent_space_dim = bottleneck.units  # number of features in latent space
         self._n_features = n_features
 
         # If autoencoder must be symmetrical
-        if is_symmetrical:
+        if decoder_layers is None:
 
             # Add all given layers to the encoder model
-            for layer in layers:
+            for layer in encoder_layers:
+
+                # Raise error if one of the given layers is an InputLayer
+                if isinstance(layer, InputLayer):
+                    raise ValueError("Given layers must not be InputLayer instances")
+
                 self._encoder.add(layer)
 
+            # Add bottleneck
+            self._encoder.add(bottleneck)
+
             # Add all given layers in reverse order to the decoder model
-            reverse_layers = list(layers)
+            reverse_layers = list(encoder_layers)
             reverse_layers.reverse()
 
             for layer in reverse_layers:
                 layer_config = layer.get_config()
+                layer_name = layer_config["name"] + _DECODER_LAYER_DEFAULT_POSTFIX
+                layer_config["name"] = layer_name
                 cloned_layer = type(layer).from_config(layer_config)
                 self._decoder.add(cloned_layer)
 
         # If autoencoder must be asymmetrical
         else:
-            add_to_decoder_flag = False
-            for layer in layers:
+            # Add encoder layers
+            for layer in encoder_layers:
 
-                # If we haven't reached the bottleneck, add the layer to the encoder, otherwise add it to the decoder
-                if add_to_decoder_flag:
-                    self._decoder.add(layer)
-                else:
-                    self._decoder.add(layer)
+                # Raise error if one of the given layers is an InputLayer
+                if isinstance(layer, InputLayer):
+                    raise ValueError("Given layers must not be InputLayer instances")
 
-                # If bottleneck layer is reached, set add_to_decoder_flag to True
-                if layer.units == latent_space_dim:
-                    add_to_decoder_flag = True
+                self._encoder.add(layer)
+
+            # Add bottleneck
+            self._encoder.add(bottleneck)
+
+            # Add decoder layers
+            for layer in decoder_layers:
+
+                # Raise error if one of the given layers is an InputLayer
+                if isinstance(layer, InputLayer):
+                    raise ValueError("Given layers must not be InputLayer instances")
+                self._decoder.add(layer)
 
         # Add last layer that has the same size as the input of the network (TimeDistributed if the input is a sequence)
         if outputs_sequences:
