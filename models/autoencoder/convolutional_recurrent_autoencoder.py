@@ -9,7 +9,7 @@ DECODER_MODEL_NAME: final = "Decoder"
 _DECODER_LAYER_DEFAULT_POSTFIX = "_decoder"
 
 
-class ConvolutionalAutoEncoder(keras.models.Model):
+class ConvolutionalRecurrentAutoEncoder(keras.models.Model):
     """
     This class represents a generic autoencoder model, that can be constructed with any keras layer.
     """
@@ -43,10 +43,9 @@ class ConvolutionalAutoEncoder(keras.models.Model):
         if input_shape is not None and input_shape[-1] != n_features:
             raise ValueError("Input shape must match with given feature number")
 
-        super(ConvolutionalAutoEncoder, self).__init__()
+        super(ConvolutionalRecurrentAutoEncoder, self).__init__()
         self._encoder = Sequential(name=ENCODER_MODEL_NAME)
         self._decoder = Sequential(name=DECODER_MODEL_NAME)  # number of features in latent space
-        self._latent_space_dim = bottleneck.units
         self._n_features = n_features
 
         # If autoencoder must be symmetrical
@@ -348,7 +347,7 @@ class ConvolutionalAutoEncoder(keras.models.Model):
         if y is not None:
             raise ValueError("AutoEncoder must fit just on input data.")
 
-        return super(ConvolutionalAutoEncoder, self).fit(
+        return super(ConvolutionalRecurrentAutoEncoder, self).fit(
             x=x,
             y=x,
             batch_size=batch_size,
@@ -392,7 +391,7 @@ class ConvolutionalAutoEncoder(keras.models.Model):
         Raises:
             ValueError: if `summary()` is called before the model is built.
         """
-        super(ConvolutionalAutoEncoder, self).summary(
+        super(ConvolutionalRecurrentAutoEncoder, self).summary(
             line_length=line_length,
             positions=positions,
             print_fn=print_fn,
