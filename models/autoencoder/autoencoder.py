@@ -15,13 +15,12 @@ class AutoEncoder(keras.models.Model):
     """
 
     def __init__(self, input_shape: tuple[int, ...], encoder_layers: Iterable[Layer], bottleneck: Layer,
-                 decoder_layers: Optional[Iterable[Layer]] = None, outputs_sequences: bool = False,
-                 ):
+                 decoder_layers: Optional[Iterable[Layer]] = None, outputs_sequences: bool = False):
         """
         Constructor. Instantiates a new autoencoder with the given encoder and decoder layers and builds it, if input
         shape is given.
 
-        :param input_shape: a integer tuple representing the input shape the model will be build from..
+        :param input_shape: a integer tuple representing the input shape the model will be build from.
         :param encoder_layers: an iterable containing the encoder layers (no InputLayer must be given, or ValueError
                                will be raised).
         :param bottleneck: bottleneck layer which outputs the representation of the input vector in the latent space.
