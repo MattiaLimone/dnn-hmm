@@ -169,8 +169,6 @@ class Convolutional1DAutoEncoder(AutoEncoder):
                              f'\nReceived conv_kernels_size dimension={len(conv_kernels_size)}.'
                              f'\nReceived conv_strides dimension={len(conv_strides)}.')
 
-
-
         # Setup instance variables
         self._conv_filters = conv_filters
         self._conv_kernels_size = conv_kernels_size
