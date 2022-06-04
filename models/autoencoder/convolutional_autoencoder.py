@@ -138,8 +138,8 @@ class Convolutional1DAutoEncoder(AutoEncoder):
         :param pool_type: A string. Either "AVG_POOL" or "MAX_POOL" to use an Average Pooling layer or a Max Pooling
             layer.
         :param activation: Activation function to use. If you don't specify anything, no activation is applied.
-        :param ignore_first_convolutional_decoder: A boolean. If true first layer of decoder will not be added to the
-            model.
+        :param ignore_first_convolutional_decoder: A boolean. If true first convolutional layer of the encoder will not
+            be added to the decoder as a deconvolutional layer.
         """
         if input_shape is not None and input_shape[-1] < 1:
             raise ValueError('Feature number must be strictly positive. '
