@@ -65,8 +65,26 @@ class RecurrentAutoEncoder(AutoEncoder):
         :param go_backwards: Boolean (default False). If True, process the input sequence backwards and return the
             reversed sequence.
         """
-        # TODO: add input checks and error raising
-
+        if input_shape is not None and input_shape[-1] < 1:
+            raise ValueError('Feature number must be strictly positive. '
+                             f'Received input_shape={input_shape}.')
+        if unit_types is not None and len(unit_types) <= 0:
+            raise ValueError('Invalid value for argument `unit_types`. Expected a strictly positive value. '
+                             f'Received unit_types={unit_types}.')
+        if recurrent_units is not None and len(recurrent_units) <= 0:
+            raise ValueError('Invalid value for argument `conv_kernels_size`. Expected a strictly positive value. '
+                             f'Received conv_kernels_size={recurrent_units}.')
+        if latent_space_dim is not None and latent_space_dim <= 0:
+            raise ValueError('Invalid value for argument `latent_space_dim`. Expected a strictly positive value. '
+                             f'Received latent_space_dim={latent_space_dim}.')
+        if latent_space_dim is not None and latent_space_dim <= 0:
+            raise ValueError('Invalid value for argument `latent_space_dim`. Expected a strictly positive value. '
+                             f'Received latent_space_dim={latent_space_dim}.')
+        if len(recurrent_units) != len(unit_types):
+            raise ValueError('Invalid value for argument `unit_types` or `recurrent_units`. Same '
+                             'dimension expected.'
+                             f'\nReceived conv_filters dimension={len(unit_types)}.'
+                             f'\nReceived conv_kernels_size dimension={len(recurrent_units)}.')
         # Setup instance variables
         self._unit_types = unit_types
         self._recurrent_units = recurrent_units
@@ -112,6 +130,11 @@ class RecurrentAutoEncoder(AutoEncoder):
         )
 
     def _build_encoder_layers(self) -> list[Union[LSTM, GRU]]:
+        """
+        Builds a new recurrent  block, composed of a LSTM or a GRU layers
+
+        :return: created LSTM or GRU block
+        """
         encoder_layers: list[Union[LSTM, GRU]] = []
 
         for layer_index in range(len(self._unit_types)):
@@ -145,6 +168,15 @@ class RecurrentAutoEncoder(AutoEncoder):
 
     def _build_bottleneck(self, latent_space_dim: int, unit_type: str, activation: str, recurrent_activation: str) \
             -> Union[LSTM, GRU]:
+        """
+        Build the bottleneck layer that consist of a LSTM or a GRU layer
+
+        :param latent_space_dim: An integer. Dimensionality of the bottleneck.
+        :param unit_type: A string. Either "LSTM" or "GRU" to chose the type of layer
+        :param activation: Activation function to use. If you don't specify anything, no activation is applied.
+        :param recurrent_activation: Activation function to use for the recurrent step.
+        :return: created LSTM or GRU block
+        """
         constructor = _UNIT_TYPES[unit_type]
         units = latent_space_dim
 
@@ -169,6 +201,11 @@ class RecurrentAutoEncoder(AutoEncoder):
         return bottleneck
 
     def _build_decoder_layers(self) -> list[Union[LSTM, GRU]]:
+        """
+        Build the decoder layer, usually symmetrical to the decoder
+
+        :return: created decoder block
+        """
         decoder_layers: list[Union[LSTM, GRU]] = []
 
         for layer_index in reversed(range(len(self._unit_types))):
