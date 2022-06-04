@@ -4,17 +4,19 @@ from keras.layers import LSTM
 
 def main():
 
-    lstm0 = LSTM(units=256, activation='relu', return_sequences=True)
-    lstm1 = LSTM(units=128, activation='relu', return_sequences=True)
-    lstm2 = LSTM(name='Bottleneck', units=64, activation='relu', return_sequences=True)
-    lstm_decoder0 = LSTM(name="lstm_decoder", units=128, activation='relu', return_sequences=True)
-    lstm_decoder1 = LSTM(name="lstm_decoder1", units=256,  activation='relu', return_sequences=True)
-    encoder_layers = [lstm0, lstm1]
-    decoder_layers = [lstm_decoder0, lstm_decoder1]
+    lstm0 = LSTM(name="lstm_encoder1", units=512, activation='relu', return_sequences=True)
+    lstm1 = LSTM(name="lstm_encoder2", units=256, activation='relu', return_sequences=True)
+    lstm2 = LSTM(name="lstm_encoder3", units=128, activation='relu', return_sequences=True)
+    lstm3 = LSTM(name='Bottleneck', units=64, activation='relu', return_sequences=True)
+    lstm_decoder0 = LSTM(name="lstm_decoder1", units=128, activation='relu', return_sequences=True)
+    lstm_decoder1 = LSTM(name="lstm_decoder2", units=256,  activation='relu', return_sequences=True)
+    lstm_decoder2 = LSTM(name="lstm_decoder3", units=512,  activation='relu', return_sequences=True)
+    encoder_layers = [lstm0, lstm1,lstm2]
+    decoder_layers = [lstm_decoder0, lstm_decoder1, lstm_decoder2]
     model = AutoEncoder(
         n_features=39,
         encoder_layers=encoder_layers,
-        bottleneck=lstm2,
+        bottleneck=lstm3,
         decoder_layers=decoder_layers,
         outputs_sequences=True,
         input_shape=(32, 150, 39),
