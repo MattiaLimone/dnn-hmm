@@ -14,14 +14,14 @@ class AutoEncoder(keras.models.Model):
     This class represents a generic autoencoder model, that can be constructed with any keras layer.
     """
 
-    def __init__(self, n_features: int, encoder_layers: Iterable[Layer], bottleneck: Layer,
+    def __init__(self, input_shape: tuple[int, ...], encoder_layers: Iterable[Layer], bottleneck: Layer,
                  decoder_layers: Optional[Iterable[Layer]] = None, outputs_sequences: bool = False,
-                 input_shape: Optional[tuple[int]] = None):
+                 ):
         """
         Constructor. Instantiates a new autoencoder with the given encoder and decoder layers and builds it, if input
         shape is given.
 
-        :param n_features: an integer representing the number of input features.
+        :param input_shape: a integer tuple representing the input shape the model will be build from..
         :param encoder_layers: an iterable containing the encoder layers (no InputLayer must be given, or ValueError
                                will be raised).
         :param bottleneck: bottleneck layer which outputs the representation of the input vector in the latent space.
@@ -29,25 +29,19 @@ class AutoEncoder(keras.models.Model):
                                will be raised); by default, this is None since the autoencoder structure is assumed to
                                be symmetrical (hence encoder layers are copied in reverse order in decoder layers).
         :param outputs_sequences: a boolean indicating whether or not the output of the network should be a sequence.
-        :param input_shape: a tuple representing the input shape; if not given, the model wont be built at its creation;
-                            it's worth noting that the last element of the shape must coincide with the n_features
-                            parameter, otherwise ValueError will be raised.
 
         :raises ValueError: if given n_features is less than 1, if input_shape last element does not coincide with
                             n_features or if one of the layers contained in encoder_layers or decoder_layers is an
                             instance of InputLayer.
         """
-        if n_features < 1:
+        if input_shape[-1] < 1:
             raise ValueError("Feature number must be strictly positive")
-
-        if input_shape is not None and input_shape[-1] != n_features:
-            raise ValueError("Input shape last axis must match with given feature number")
 
         super(AutoEncoder, self).__init__()
         self._encoder = Sequential(name=ENCODER_MODEL_NAME)
         self._decoder = Sequential(name=DECODER_MODEL_NAME)
         self._latent_space_dim = bottleneck.units  # number of features in latent space
-        self._n_features = n_features
+        self._input_shape = input_shape
 
         # If autoencoder must be symmetrical
         if decoder_layers is None:
@@ -99,13 +93,12 @@ class AutoEncoder(keras.models.Model):
 
         # Add last layer that has the same size as the input of the network (TimeDistributed if the input is a sequence)
         if outputs_sequences:
-            self._decoder.add(TimeDistributed(Dense(n_features)))
+            self._decoder.add(TimeDistributed(Dense(input_shape[-1])))
         else:
-            self._decoder.add(Dense(n_features))
+            self._decoder.add(Dense(input_shape[-1]))
 
-        # Build the model in input shape is given
-        if input_shape is not None:
-            self.build(input_shape)
+        # Build the model
+        self.build(input_shape)
 
     def call(self, inputs, training=None, mask=None):
         """

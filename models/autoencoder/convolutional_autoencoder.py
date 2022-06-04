@@ -93,12 +93,11 @@ class Convolutional1DAutoEncoder(AutoEncoder):
 
         # Call the parent constructor passing the created layers to it
         super(Convolutional1DAutoEncoder, self).__init__(
-            n_features=input_shape[-1],
+            input_shape=input_shape,
             encoder_layers=encoder_conv_blocks,
             bottleneck=bottleneck,
             decoder_layers=decoder_conv_blocks,
-            outputs_sequences=False,
-            input_shape=input_shape
+            outputs_sequences=False
         )
 
     def _build_encoder_conv_blocks(self, input_shape: tuple[int, ...]) -> \
