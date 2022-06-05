@@ -141,25 +141,25 @@ class Convolutional1DAutoEncoder(AutoEncoder):
         :param ignore_first_convolutional_decoder: A boolean. If true first convolutional layer of the encoder will not
             be added to the decoder as a deconvolutional layer.
         """
-        if input_shape is not None and input_shape[-1] < 1:
+        if not input_shape and input_shape[-1] < 1:
             raise ValueError('Feature number must be strictly positive. '
                              f'Received input_shape={input_shape}.')
-        if conv_filters is not None and len(conv_filters) <= 0:
+        if not conv_filters and len(conv_filters) <= 0:
             raise ValueError('Invalid value for argument `conv_filters`. Expected a strictly positive value. '
                              f'Received conv_filters={conv_filters}.')
-        if conv_kernels_size is not None and len(conv_kernels_size) <= 0:
+        if not conv_kernels_size and len(conv_kernels_size) <= 0:
             raise ValueError('Invalid value for argument `conv_kernels_size`. Expected a strictly positive value. '
                              f'Received conv_kernels_size={conv_kernels_size}.')
-        if conv_strides is not None and len(conv_strides) <= 0:
+        if not conv_strides and len(conv_strides) <= 0:
             raise ValueError('Invalid value for argument `conv_strides`. Expected a strictly positive value. '
                              f'Received conv_kernels_size={conv_strides}.')
-        if latent_space_dim is not None and latent_space_dim <= 0:
+        if not latent_space_dim and latent_space_dim <= 0:
             raise ValueError('Invalid value for argument `latent_space_dim`. Expected a strictly positive value. '
                              f'Received latent_space_dim={latent_space_dim}.')
-        if dropout_conv is not None and dropout_conv < 0:
+        if not dropout_conv and dropout_conv < 0:
             raise ValueError('Invalid value for argument `dropout_conv`. Expected a positive value. '
                              f'Received dropout_conv={dropout_conv}.')
-        if dropout_dense is not None and dropout_dense < 0:
+        if not dropout_dense and dropout_dense < 0:
             raise ValueError('Invalid value for argument `dropout_dense`. Expected a positive value. '
                              f'Received dropout_dense={dropout_dense}.')
         if len(conv_filters) != len(conv_kernels_size) or len(conv_filters) != len(conv_strides):
