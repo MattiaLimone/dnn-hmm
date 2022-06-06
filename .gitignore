@@ -188,3 +188,5 @@ fabric.properties
 # Dataset folder
 data
 data/
+data/cleaned
+/data/
