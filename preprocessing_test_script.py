@@ -93,7 +93,7 @@ def _speakers_audios_filename(path: str, speakers_audios: dict, visited: Optiona
                     _speakers_audios_filename(newpath, speakers_audios, visited)
 
 
-def _speakers_audios_mfccs_lpccs_mel_spectrograms_max_frames(speakers_audios_names: dict) -> (dict, dict, dict, int):
+def _speakers_audios_mfccs_lpccs_mel_spectrograms_max_frames(speakers_audios_names: dict) -> (dict, dict, dict, int, int, int):
     """
     Computes the maximum frames length among all audios, then it generates a dictionary containing speaker-MFCCs pairs
     and a dictionary containing speaker-LPCCs, speaker-Mel-scaled-log-spectrogram pairs (for each audio).
@@ -105,7 +105,9 @@ def _speakers_audios_mfccs_lpccs_mel_spectrograms_max_frames(speakers_audios_nam
     speaker_audios_mfccs = {}
     speaker_audios_lpccs = {}
     speaker_audios_mel_spectrogram = {}
-    max_frames = 0
+    max_frames_mfcc = 0
+    max_frames_lpcc = 0
+    max_frames_mel = 0
 
     # For each speaker, extract MFCCs and LPCCs and search for max frame number
     for speaker in tqdm(speakers_audios_names, desc="Extracting MFCCs, LPCCs, Mel Spectrogram, Max Frame: "):
@@ -134,10 +136,16 @@ def _speakers_audios_mfccs_lpccs_mel_spectrograms_max_frames(speakers_audios_nam
             speaker_audios_mel_spectrogram[speaker].append(mel_spectrum)
 
             # Update max frame num if found higher number of frames
-            if len(mfccs) > max_frames:
-                max_frames = len(mfccs)
+            if len(mfccs) > max_frames_mfcc:
+                max_frames_mfcc = len(mfccs)
 
-    return speaker_audios_mfccs, speaker_audios_lpccs, speaker_audios_mel_spectrogram, max_frames
+            if len(lpccs) > max_frames_lpcc:
+                max_frames_lpcc = len(lpccs)
+
+            if len(mel_spectrum) > max_frames_mel:
+                max_frames_mel = len(mel_spectrum)
+
+    return speaker_audios_mfccs, speaker_audios_lpccs, speaker_audios_mel_spectrogram, max_frames_mfcc, max_frames_lpcc, max_frames_mel
 
 
 def _fill_speakers_audios_features(speaker_audio_features: dict, max_frames: int, feature_num: int = 0,
@@ -387,51 +395,55 @@ def main():
     # Generate the speaker indexes to grant the speakers are always processed in the same order (or load it if saved)
     speaker_indexes = _generate_or_load_speaker_ordered_dict(list(speakers_audios_names.keys()), generate=True)
     # Get max frame len, audio mel-scaled spectrograms, audio MFCCs and LPCCs for each speaker
-    speaker_audios_mfccs, speaker_audios_lpccs, speaker_audios_mel_spectrograms, max_frames = \
+    speaker_audios_mfccs, speaker_audios_lpccs, speaker_audios_mel_spectrograms, max_frames_mfcc, max_frames_lpcc, max_frames_mel = \
         _speakers_audios_mfccs_lpccs_mel_spectrograms_max_frames(speakers_audios_names)
+
+
 
     # Normalize length for MFCCs audio frame sequences
     speaker_audios_mfcc_filled_zeros = _fill_speakers_audios_features(
         speaker_audios_mfccs,
-        max_frames,
+        max_frames_mfcc,
         MFCC_NUM_DEFAULT*3,
         mode=0
     )
     speaker_audios_mfcc_filled_circular = _fill_speakers_audios_features(
         speaker_audios_mfccs,
-        max_frames,
+        max_frames_mfcc,
         MFCC_NUM_DEFAULT*3,
         mode=1
     )
-    '''
+
     # Normalize length for LPCCs audio frame sequences
     speaker_audios_lpcc_filled_zeros = _fill_speakers_audios_features(
         speaker_audios_lpccs,
-        max_frames,
+        max_frames_lpcc,
         LPCC_NUM_DEFAULT,
         mode=0
     )
     
     speaker_audios_lpcc_filled_circular = _fill_speakers_audios_features(
         speaker_audios_lpccs,
-        max_frames,
+        max_frames_lpcc,
         LPCC_NUM_DEFAULT,
         mode=1
     )
 
+    """
     # Normalize length of Mel-scaled spectrograms audio frame sequences
     speaker_audios_mel_spectrogram_filled_zeros = _fill_speakers_audios_features(
         speaker_audios_mfccs,
-        max_frames,
+        max_frames_mel,
         mode=0
     )
 
     speaker_audios_mel_spectrogram_filled_circular = _fill_speakers_audios_features(
         speaker_audios_mfccs,
-        max_frames,
+        max_frames_mel,
         mode=1
     )
-    '''
+    """
+
 
     '''
     # Normalize length of all audio sequences
@@ -452,7 +464,7 @@ def main():
     acoustic_models_mfcc_filled_circular, labels_mfcc_filled_circular = _generate_speakers_acoustic_model(
         speaker_audios_mfcc_filled_circular
     )
-    '''
+
     acoustic_models_lpcc_filled_zeros, labels_lpcc_filled_zeros = _generate_speakers_acoustic_model(
         speaker_audios_lpcc_filled_zeros
     )
@@ -460,7 +472,8 @@ def main():
     acoustic_models_lpcc_filled_circular, labels_lpcc_filled_circular = _generate_speakers_acoustic_model(
         speaker_audios_lpcc_filled_circular
     )
-    
+
+    """
     acoustic_models_mel_spectr_filled_circular, labels_mel_spectr_filled_circular = _generate_speakers_acoustic_model(
         speaker_audios_mel_spectrogram_filled_circular
     )
@@ -468,7 +481,11 @@ def main():
     acoustic_models_mel_spectr_filled_zeros, labels_mel_spectr_filled_zeros = _generate_speakers_acoustic_model(
         speaker_audios_mel_spectrogram_filled_zeros
     )
-    '''
+    """
+
+
+
+
     # One-hot encode frame-level state labels as vectors
     one_hot_encoded_labels_mfcc_filled_zeros = _one_hot_encode_state_labels(
         labels_mfcc_filled_zeros,
@@ -479,7 +496,7 @@ def main():
         labels_mfcc_filled_circular,
         speaker_indexes
     )
-    '''
+
     one_hot_encoded_labels_lpcc_filled_zeros = _one_hot_encode_state_labels(
         labels_lpcc_filled_zeros,
         speaker_indexes
@@ -489,7 +506,8 @@ def main():
         labels_lpcc_filled_circular,
         speaker_indexes
     )
-      
+
+    """
     one_hot_encoded_labels_mel_spectrogram_filled_zeros = _one_hot_encode_state_labels(
         labels_mel_spectr_filled_zeros,
         speaker_indexes
@@ -499,7 +517,9 @@ def main():
         labels_mel_spectr_filled_circular,
         speaker_indexes
     )
-    '''
+    """
+
+
     # Construct the audio feature tensor for both MFCCs and LPCCs
     audios_feature_tensor_mfcc_filled_zeros = _generate_audios_feature_tensor(
         speaker_audios_mfcc_filled_zeros,
@@ -510,7 +530,7 @@ def main():
         speaker_audios_mfcc_filled_circular,
         speaker_indexes
     )
-    '''
+
     audios_feature_tensor_lpcc_filled_zeros = _generate_audios_feature_tensor(
         speaker_audios_lpcc_filled_zeros,
         speaker_indexes
@@ -520,7 +540,9 @@ def main():
         speaker_audios_lpcc_filled_circular,
         speaker_indexes
     )
-    
+
+
+    """
     audios_feature_tensor_mel_spectrogram_filled_zeros = _generate_audios_feature_tensor(
         speaker_audios_mel_spectrogram_filled_zeros,
         speaker_indexes
@@ -530,7 +552,10 @@ def main():
         speaker_audios_mel_spectrogram_filled_circular,
         speaker_indexes
     )
-    '''
+    """
+
+
+
     # Generate dataframes containing input (feature) and output (label) tensors
     df_mfcc_filled_zeros = _generate_output_dataframe(
         audios_feature_tensor_mfcc_filled_zeros,
@@ -540,7 +565,7 @@ def main():
         audios_feature_tensor_mfcc_filled_circular,
         one_hot_encoded_labels_mfcc_filled_circular
     )
-    '''
+
     df_lpcc_filled_zeros = _generate_output_dataframe(
         audios_feature_tensor_lpcc_filled_zeros,
         one_hot_encoded_labels_lpcc_filled_zeros
@@ -549,7 +574,8 @@ def main():
         audios_feature_tensor_lpcc_filled_circular,
         one_hot_encoded_labels_lpcc_filled_circular
     )
-    
+
+    """
     df_mel_spectrogram_filled_zeros = _generate_output_dataframe(
         audios_feature_tensor_mel_spectrogram_filled_zeros,
         one_hot_encoded_labels_mel_spectrogram_filled_zeros
@@ -558,7 +584,10 @@ def main():
         audios_feature_tensor_mel_spectrogram_filled_circular,
         one_hot_encoded_labels_mel_spectrogram_filled_circular
     )
-    '''
+    """
+
+
+
     # Split generated dataframes into train and test sets
     df_mfcc_filled_zeros_train, df_mfcc_filled_zeros_test = skl.model_selection.train_test_split(
         df_mfcc_filled_zeros,
@@ -573,7 +602,7 @@ def main():
         shuffle=True,
         random_state=_RANDOM_SEED
     )
-    '''
+
     df_lpcc_filled_zeros_train, df_lpcc_filled_zeros_test = skl.model_selection.train_test_split(
         df_lpcc_filled_zeros,
         train_size=utl.TRAIN_PERCENTAGE,
@@ -587,7 +616,8 @@ def main():
         shuffle=True,
         random_state=_RANDOM_SEED
     )
-    
+
+    """
     df_mel_spectr_filled_zeros_train, df_mel_spectr_filled_zeros_test = skl.model_selection.train_test_split(
         df_mel_spectrogram_filled_zeros,
         train_size=utl.TRAIN_PERCENTAGE,
@@ -601,24 +631,28 @@ def main():
         shuffle=True,
         random_state=_RANDOM_SEED
     )
-    '''
+    """
+    
+
+
     # Save extracted features and labels to pickle files in a suitable format for model training
     df_mfcc_filled_zeros_train.to_pickle(_TRAIN_SET_PATH + "/mfccs_filled_zeros_train.pkl")
     df_mfcc_filled_circular_train.to_pickle(_TRAIN_SET_PATH + "/mfccs_filled_circular_train.pkl")
-    '''
-    df_lpcc_filled_zeros_train.to_pickle(_TRAIN_SET_PATH + "/lpccs_filled_zeros_train.pkl")
-    df_mel_spectr_filled_zeros_train.to_pickle(_TRAIN_SET_PATH + "/mel_spectr_filled_zeros_train.pkl")
-    df_lpcc_filled_circular_train.to_pickle(_TRAIN_SET_PATH + "/lpccs_filled_circular_train.pkl")
-    df_mel_spectr_filled_circular_train.to_pickle(_TRAIN_SET_PATH + "/mel_spectr_filled_circular_train.pkl")
-    '''
     df_mfcc_filled_zeros_test.to_pickle(_TRAIN_SET_PATH + "/mfccs_filled_zeros_test.pkl")
     df_mfcc_filled_circular_test.to_pickle(_TRAIN_SET_PATH + "/mfccs_filled_circular_test.pkl")
-    '''
+
+    df_lpcc_filled_zeros_train.to_pickle(_TRAIN_SET_PATH + "/lpccs_filled_zeros_train.pkl")
+    df_lpcc_filled_circular_train.to_pickle(_TRAIN_SET_PATH + "/lpccs_filled_circular_train.pkl")
     df_lpcc_filled_zeros_test.to_pickle(_TRAIN_SET_PATH + "/lpccs_filled_zeros_test.pkl")
-    df_mel_spectr_filled_zeros_test.to_pickle(_TRAIN_SET_PATH + "/mel_spectr_filled_zeros_test.pkl") 
     df_lpcc_filled_circular_test.to_pickle(_TRAIN_SET_PATH + "/lpccs_filled_circular_test.pkl")
+
+    """
+    df_mel_spectr_filled_zeros_train.to_pickle(_TRAIN_SET_PATH + "/mel_spectr_filled_zeros_train.pkl")
+    df_mel_spectr_filled_circular_train.to_pickle(_TRAIN_SET_PATH + "/mel_spectr_filled_circular_train.pkl")
+    df_mel_spectr_filled_zeros_test.to_pickle(_TRAIN_SET_PATH + "/mel_spectr_filled_zeros_test.pkl")
     df_mel_spectr_filled_circular_test.to_pickle(_TRAIN_SET_PATH + "/mel_spectr_filled_circular_test.pkl")
-    '''
+    """
+
 
 if __name__ == "__main__":
     main()
