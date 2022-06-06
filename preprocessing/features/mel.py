@@ -49,7 +49,7 @@ def extract_mel_spectrum(signal: np.ndarray, sr: int, n_filter_bank: int = MEL_F
         raise ValueError("Sampling rate must be positive")
     if signal.ndim != 1:
         raise ValueError("Signal must be a 1 x N mono-dimensional array")
-    if n_filter_banks < 0:
+    if n_filter_bank < 0:
         raise ValueError("Filter bank number must be non-negative")
 
     mel_spectrum = librosa.feature.melspectrogram(y=signal, sr=sr, n_mels=n_filter_bank)

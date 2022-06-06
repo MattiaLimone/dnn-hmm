@@ -9,9 +9,10 @@ from preprocessing.features.mel import extract_mfccs, MFCC_NUM_DEFAULT
 from gmmhmm import generate_acoustic_model, gmm_hmm_grid_search
 
 
+
 np.set_printoptions(threshold=sys.maxsize)
 # Convert
-results = [y for x in os.walk("data/lisa/data/timit/raw/TIMIT/TRAIN/DR1/FECD0") for y in
+results = [y for x in os.walk('data/lisa/data/timit/raw/TIMIT/TEST/DR1/FAKS0') for y in
            glob(os.path.join(x[0], '*.WAV'))]
 print(os.getcwd())
 print(len(results))
@@ -23,7 +24,7 @@ train_set_lengths = np.zeros(1, dtype=int)
 
 for path in tqdm(results):
     filename = str(os.path.basename(path))
-    data, sr = utl.remove_silence(path=path)
+    data, sr = utl.remove_silence(path=path, export_path='data/test/')
     mfcc = extract_mfccs(signal=data, sr=sr, n_mfcc=MFCC_NUM_DEFAULT)
     mfcc = mfcc.transpose()
     train_set_lengths = np.append(train_set_lengths, len(mfcc))

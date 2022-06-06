@@ -4,9 +4,9 @@ from hmmlearn.hmm import GMMHMM
 from tqdm.auto import tqdm
 from preprocessing.utils import TRAIN_PERCENTAGE
 
-N_COMPONENTS: final = 5
-N_MIX: final = 4
-N_ITER: final = 12
+N_COMPONENTS: final = 2
+N_MIX: final = 2
+N_ITER: final = 2
 
 
 def gmm_hmm_grid_search(X: np.ndarray, sequence_lengths: np.ndarray = None, min_state_number: int = 1,
@@ -113,6 +113,7 @@ def generate_acoustic_model(X: np.ndarray, sequence_lengths: np.ndarray, n_compo
     if n_iter < 0:
         raise ValueError("The number of iterations must be positive.")
 
+    print(sequence_lengths)
     # train the GMM-HMM model on the given audios
     model = GMMHMM(n_components=n_components, covariance_type='diag', n_iter=n_iter, n_mix=n_mix)
     model.fit(X, sequence_lengths)
@@ -123,7 +124,7 @@ def generate_acoustic_model(X: np.ndarray, sequence_lengths: np.ndarray, n_compo
     for sequence_length in sequence_lengths:
         sequence_end = sequence_length + sequence_start
         audio = X[sequence_start:sequence_end]
-        _, audio_states = model.decode(audio, algorithm='viterbi')
+        log_prob, audio_states = model.decode(audio, algorithm='viterbi')
         audios_states.append(audio_states)
         sequence_start = sequence_end
 

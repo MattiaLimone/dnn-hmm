@@ -48,8 +48,8 @@ def remove_silence(path: str, export_path: str = None):
     )
     # Generate indexes of silence interval
     indexes = []
-    for sr in silence_ranges:
-        indexes = [*indexes, *range(sr[0], sr[1] + 1)]
+    for silence_range in silence_ranges:
+        indexes = [*indexes, *range(silence_range[0], silence_range[1] + 1)]
     # Delete silence interval
     data = np.delete(data, indexes, axis=0)
     # Save wav file
