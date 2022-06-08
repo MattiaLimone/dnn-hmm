@@ -6,11 +6,14 @@ import librosa.display
 from pydub import AudioSegment, silence
 import soundfile as sf
 from typing import final
+import shutil
+
 
 TRAIN_PERCENTAGE: final = 0.70
 MINIMUM_SILENCE_LENGTH: final = 500
 SILENCE_THRESHOLD: final = -16
 SEEK_STEP = 2
+_TMP_DIR_NAME = "tmp"
 
 
 def remove_silence(path: str, export_path: str = None):
@@ -20,24 +23,36 @@ def remove_silence(path: str, export_path: str = None):
    to the export path (if given).
 
    :param path: a string representing the path to the audio file to remove the silence from.
-   :param export_path: a string representing the export path for the silence-cleaned audio.
+   :param export_path: a string representing the export path for the silence-cleaned audio (default: None).
    :return: the silence-cleaned audio file, alongside with the sample rate.
    """
-    # Check if export path exist
-    if not os.path.exists(export_path):
-        # Create a new directory because it does not exist
-        os.makedirs(export_path)
+
     # Read the Audiofile
     data, sr = librosa.load(path)
+
     # Name extraction from path
     filename = os.path.basename(path)
 
+    # Dirname extraction
+    tmp_export_dir = os.path.dirname(path) + "/" + _TMP_DIR_NAME
+
     if export_path is not None:
+        # Check if export path exist
+        if not os.path.exists(export_path):
+            # Create a new directory because it does not exist
+            os.makedirs(export_path)
+
         # Save temporary file wav with rfidd
         sf.write(export_path + filename, data, sr)
         data_as = AudioSegment.from_wav(export_path + filename)
+
     else:
-        data_as = AudioSegment.from_wav(path)
+        # Create temporary directory to contain temporary wav
+        os.makedirs(tmp_export_dir)
+
+        # Save temporary file wav with rfidd and read it with pydub
+        sf.write(tmp_export_dir + "/" + filename, data, sr)
+        data_as = AudioSegment.from_wav(tmp_export_dir + "/" + filename)
 
     # Detect silence intervals where silence last 500ms and dB range reduction is higher than 16dB
     silence_ranges = silence.detect_silence(
@@ -55,6 +70,9 @@ def remove_silence(path: str, export_path: str = None):
     # Save wav file
     if export_path is not None:
         sf.write(export_path + filename, data, sr)
+    else:
+        # Delete temporary directory
+        shutil.rmtree(tmp_export_dir)
 
     return data, sr
 
