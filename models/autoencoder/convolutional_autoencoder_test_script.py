@@ -27,10 +27,10 @@ def main():
     n_features = 200
     n_timesteps = 150
     batch_size = 10
-    conv_filters = [12, 8]
-    conv_kernels_size = [3, 4]
-    conv_strides = [1, 1]
-    conv_pools = [2, 2]
+    conv_filters = [12, 8, 4]
+    conv_kernels_size = [3, 4, 2]
+    conv_strides = [1, 1, 1]
+    conv_pools = [2, 2, 2]
     input_shape = (batch_size, n_timesteps, n_features)
 
     model = Convolutional1DAutoEncoder(
