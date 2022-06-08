@@ -14,7 +14,7 @@ from collections import OrderedDict
 import sklearn as skl
 
 
-_DATASET_PATH: final = "data/lisa/data/timit/raw/TIMIT/TRAIN/DR3"
+_DATASET_PATH: final = "data/lisa/data/timit/raw/TIMIT/TRAIN/DR4"
 _SPEAKER_INDEXES_PATH: final = "data/speakerindexes/speakerindexes.pkl"
 _TRAIN_SET_PATH: final = "data/cleaned/train"
 _TEST_SET_PATH: final = "data/cleaned/test"
@@ -23,7 +23,8 @@ _AUDIO_REGEX: final = re.compile("(.*)\\.WAV")
 _EXCLUDED_SPEAKERS: final = {
     "MWBT0", "FSLB1", "MRCZ0", "MPGL0", "FJRE0", "MRGG0", "MJJG0", "MCTW0", "MROA0", "MKLT0", "MRPP0", "MRJR0", "FDML0",
     "FMEM0", "FPJF0", "FDXW0", "MDSS0", "FCAJ0", "FMMH0", "MDMT0", "MMDS0", "MMGK0", "MRJM0", "MRJT0", "MRLJ0", "MZMB0",
-    "FDFB0", "FSJS0"
+    "FDFB0", "FSJS0", "MPRD0", "MTKP0", "MPEB0", "FLKM0", "FPAF0", "MMGC0", "MTAS0", "MKRG0", "MMEA0", "FLET0", "MSDB0",
+    "MBML0", "FREH0", "FCRZ0", "MDLM0", "MJPG0", "MRLD0", "MEWM0", "FGMB0", "MMCC0", "FHXS0", "FJDM2", "FTAJ0", "MRXB0"
 }
 
 _AUDIO_PER_SPEAKER: final = 10
@@ -390,6 +391,23 @@ def main():
 
     # Construct acoustic models and extract frame-level labels for each variation of the features (MFCCs, LPCCs,
     # Mel-scaled spectrograms, both filled with zeros and in a circular fashion)
+
+    '''
+    acoustic_models_mel_spectr_filled_zeros, labels_mel_spectr_filled_zeros = _generate_speakers_acoustic_model(
+        speaker_audios_mel_spectrogram_filled_zeros,
+        n_states=_N_STATES_MEL_SPEC,
+        n_mix=_N_MIX_MEL_SPEC,
+        n_iter=_N_ITER_MEL_SPEC
+    )
+    '''
+
+    acoustic_models_mel_spectr_filled_circular, labels_mel_spectr_filled_circular = _generate_speakers_acoustic_model(
+        speaker_audios_mel_spectrogram_filled_circular,
+        n_states=_N_STATES_MEL_SPEC,
+        n_mix=_N_MIX_MEL_SPEC,
+        n_iter=_N_ITER_MEL_SPEC
+    )
+
     '''
     acoustic_models_mfcc_filled_zeros, labels_mfcc_filled_zeros = _generate_speakers_acoustic_model(
         speaker_audios_mfcc_filled_zeros,
@@ -422,21 +440,6 @@ def main():
         n_iter=_N_ITER_LPCCS
     )
 
-    '''
-    acoustic_models_mel_spectr_filled_zeros, labels_mel_spectr_filled_zeros = _generate_speakers_acoustic_model(
-        speaker_audios_mel_spectrogram_filled_zeros,
-        n_states=_N_STATES_MEL_SPEC,
-        n_mix=_N_MIX_MEL_SPEC,
-        n_iter=_N_ITER_MEL_SPEC
-    )
-    '''
-
-    acoustic_models_mel_spectr_filled_circular, labels_mel_spectr_filled_circular = _generate_speakers_acoustic_model(
-        speaker_audios_mel_spectrogram_filled_circular,
-        n_states=_N_STATES_MEL_SPEC,
-        n_mix=_N_MIX_MEL_SPEC,
-        n_iter=_N_ITER_MEL_SPEC
-    )
 
     # One-hot encode frame-level state labels as vectors
     '''
@@ -609,12 +612,10 @@ def main():
     # df_lpcc_filled_zeros_test.to_pickle(_TRAIN_SET_PATH + "/lpccs_filled_zeros_test.pkl")
     df_lpcc_filled_circular_test.to_pickle(_TRAIN_SET_PATH + "/lpccs_filled_circular_test.pkl")
 
-    """
-    df_mel_spectr_filled_zeros_train.to_pickle(_TRAIN_SET_PATH + "/mel_spectr_filled_zeros_train.pkl")
+    # df_mel_spectr_filled_zeros_train.to_pickle(_TRAIN_SET_PATH + "/mel_spectr_filled_zeros_train.pkl")
     df_mel_spectr_filled_circular_train.to_pickle(_TRAIN_SET_PATH + "/mel_spectr_filled_circular_train.pkl")
-    df_mel_spectr_filled_zeros_test.to_pickle(_TRAIN_SET_PATH + "/mel_spectr_filled_zeros_test.pkl")
+    # df_mel_spectr_filled_zeros_test.to_pickle(_TRAIN_SET_PATH + "/mel_spectr_filled_zeros_test.pkl")
     df_mel_spectr_filled_circular_test.to_pickle(_TRAIN_SET_PATH + "/mel_spectr_filled_circular_test.pkl")
-    """
 
 
 if __name__ == "__main__":
