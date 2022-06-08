@@ -6,7 +6,7 @@ from preprocessing.utils import TRAIN_PERCENTAGE
 
 N_COMPONENTS: final = 2
 N_MIX: final = 2
-N_ITER: final = 2
+N_ITER: final = 10
 
 
 def gmm_hmm_grid_search(X: np.ndarray, sequence_lengths: np.ndarray = None, min_state_number: int = 1,
@@ -59,7 +59,12 @@ def gmm_hmm_grid_search(X: np.ndarray, sequence_lengths: np.ndarray = None, min_
     for n_state in tqdm(range(min_state_number, max_state_number + 1)):
         for n_mix in range(min_mix_number, max_mix_number + 1):
             for n_iter in range(min_iter_number, max_iter_number + 1):
-                model = GMMHMM(n_components=n_state, covariance_type='diag', n_iter=n_iter, n_mix=n_mix)
+                model = GMMHMM(
+                    n_components=n_state,
+                    covariance_type='diag',
+                    n_iter=n_iter,
+                    n_mix=n_mix
+                )
                 model.fit(train_set_grid_search, sequence_lengths[:n_audio_train])
                 score = model.score(validation_set_grid_search, sequence_lengths[n_audio_train:])
 
@@ -113,14 +118,17 @@ def generate_acoustic_model(X: np.ndarray, sequence_lengths: np.ndarray, n_compo
     if n_iter < 0:
         raise ValueError("The number of iterations must be positive.")
 
-    print(sequence_lengths)
-    # train the GMM-HMM model on the given audios
+    # print(sequence_lengths)
+    X = X.astype(np.longfloat)
+    # Train the GMM-HMM model on the given audios
     model = GMMHMM(n_components=n_components, covariance_type='diag', n_iter=n_iter, n_mix=n_mix)
+    #model.transmat_ = np.array([1/n_components for _ in range(n_components)])
+    #model.startprob_ = np.array([1/n_components for _ in range(n_components)])
     model.fit(X, sequence_lengths)
 
     audios_states = []
     sequence_start = 0
-    # for each audio, apply the viterbi algorithm to get the most likely state sequence and add it to the return list
+    # For each audio, apply the viterbi algorithm to get the most likely state sequence and add it to the return list
     for sequence_length in sequence_lengths:
         sequence_end = sequence_length + sequence_start
         audio = X[sequence_start:sequence_end]

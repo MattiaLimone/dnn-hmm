@@ -2,6 +2,7 @@ import numpy as np
 import librosa
 from typing import final
 
+
 MFCC_NUM_DEFAULT: final = 13
 DERIVATIVE_ORDER_DEFAULT: final = 2
 MEL_FILTER_BANK_DEFAULT: final = 128
@@ -53,4 +54,8 @@ def extract_mel_spectrum(signal: np.ndarray, sr: int, n_filter_bank: int = MEL_F
         raise ValueError("Filter bank number must be non-negative")
 
     mel_spectrum = librosa.feature.melspectrogram(y=signal, sr=sr, n_mels=n_filter_bank)
-    return mel_spectrum
+    return mel_spectrum.transpose()
+
+
+def quadrato(x):
+    return x**2
