@@ -14,7 +14,6 @@ def main():
     encoder_layers = [lstm0, lstm1,lstm2]
     decoder_layers = [lstm_decoder0, lstm_decoder1, lstm_decoder2]
     model = AutoEncoder(
-        n_features=39,
         encoder_layers=encoder_layers,
         bottleneck=lstm3,
         decoder_layers=decoder_layers,

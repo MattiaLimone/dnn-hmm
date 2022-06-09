@@ -6,7 +6,7 @@ import utils as utl
 from features.mel import extract_mfccs, extract_mel_spectrum, MFCC_NUM_DEFAULT, MEL_FILTER_BANK_DEFAULT, \
     DERIVATIVE_ORDER_DEFAULT
 from features.lpcc import extract_lpccs, LPCC_NUM_DEFAULT
-from acoustic_model.gmmhmm import generate_acoustic_model, N_COMPONENTS as N_STATES
+from acoustic_model.gmmhmm import generate_acoustic_model
 import numpy as np
 import pandas as pd
 import pickle
@@ -20,11 +20,13 @@ _TRAIN_SET_PATH: final = "data/cleaned/train"
 _TEST_SET_PATH: final = "data/cleaned/test"
 _SPEAKER_DIR_REGEX: final = re.compile("[A-Z]{4}[0-9]")
 _AUDIO_REGEX: final = re.compile("(.*)\\.WAV")
-_EXCLUDED_SPEAKERS: final = {
+_EXCLUDED_SPEAKERS: final = {}
+_EXCLUDED_SPEAKERS_: final = {
     "MWBT0", "FSLB1", "MRCZ0", "MPGL0", "FJRE0", "MRGG0", "MJJG0", "MCTW0", "MROA0", "MKLT0", "MRPP0", "MRJR0", "FDML0",
     "FMEM0", "FPJF0", "FDXW0", "MDSS0", "FCAJ0", "FMMH0", "MDMT0", "MMDS0", "MMGK0", "MRJM0", "MRJT0", "MRLJ0", "MZMB0",
     "FDFB0", "FSJS0", "MPRD0", "MTKP0", "MPEB0", "FLKM0", "FPAF0", "MMGC0", "MTAS0", "MKRG0", "MMEA0", "FLET0", "MSDB0",
-    "MBML0", "FREH0", "FCRZ0", "MDLM0", "MJPG0", "MRLD0", "MEWM0", "FGMB0", "MMCC0", "FHXS0", "FJDM2", "FTAJ0", "MRXB0"
+    "MBML0", "FREH0", "FCRZ0", "MDLM0", "MJPG0", "MRLD0", "MEWM0", "FGMB0", "MMCC0", "FHXS0", "FJDM2", "FTAJ0", "MRXB0",
+    "MBDG0", "FADG0"
 }
 
 _AUDIO_PER_SPEAKER: final = 10
@@ -33,10 +35,10 @@ _STATE_PROB_KEY: final = "State_Probabilities"
 _RANDOM_SEED: final = 47
 
 _N_STATES_MFCCS: final = 5
-_N_MIX_MFCCS: final = 5
+_N_MIX_MFCCS: final = 4
 _N_ITER_MFCCS: final = 10
 _N_STATES_LPCCS: final = 4
-_N_MIX_LPCCS: final = 3
+_N_MIX_LPCCS: final = 2
 _N_ITER_LPCCS: final = 10
 _N_STATES_MEL_SPEC: final = 3
 _N_MIX_MEL_SPEC: final = 2
@@ -163,6 +165,7 @@ def _speakers_audios_mfccs_lpccs_mel_spectrograms_max_frames(speakers_audios_nam
             if len(mel_spectrum) > max_frames_mel:
                 max_frames_mel = len(mel_spectrum)
 
+    print(max_frames_mfcc)
     return speaker_audios_mfccs, speaker_audios_lpccs, speaker_audios_mel_spectrogram, max_frames_mfcc, max_frames_lpcc, max_frames_mel
 
 
@@ -247,7 +250,8 @@ def _generate_speakers_acoustic_model(speakers_audios_features: dict, n_states: 
     return acoustic_models, acoustic_model_state_labels
 
 
-def _one_hot_encode_state_labels(speakers_raw_state_labels: dict, speaker_indexes: dict) -> np.ndarray:
+def _one_hot_encode_state_labels(speakers_raw_state_labels: dict, speaker_indexes: dict, n_states: int) -> np.ndarray:
+    N_STATES = n_states
     speakers_global_state_labels = {}
     n_audio = 0  # audio number counter
     max_frames = 0  # maximum number of frames
@@ -292,9 +296,9 @@ def _one_hot_encode_state_labels(speakers_raw_state_labels: dict, speaker_indexe
             for frame_index in range(0, len(global_audio_state_labels)):
                 # Get the target most likely state for the frame according to the viterbi algorithm
                 state_index = int(global_audio_state_labels[frame_index])
-
                 # Set the corresponding component of the one-hot encode label vector to 1
                 one_hot_encoded_state_labels[audio_index, frame_index, state_index] = 1
+
             audio_index += 1
 
     return one_hot_encoded_state_labels
@@ -345,6 +349,7 @@ def main():
     speaker_audios_mfccs, speaker_audios_lpccs, speaker_audios_mel_spectrograms, max_frames_mfcc, max_frames_lpcc, \
         max_frames_mel = _speakers_audios_mfccs_lpccs_mel_spectrograms_max_frames(speakers_audios_names)
 
+    '''
     # Normalize length for MFCCs audio frame sequences
     speaker_audios_mfcc_filled_zeros = _fill_speakers_audios_features(
         speaker_audios_mfccs,
@@ -352,13 +357,14 @@ def main():
         feature_num=MFCC_NUM_DEFAULT * (DERIVATIVE_ORDER_DEFAULT + 1),
         mode=0
     )
+    '''
     speaker_audios_mfcc_filled_circular = _fill_speakers_audios_features(
         speaker_audios_mfccs,
         max_frames_mfcc,
         feature_num=MFCC_NUM_DEFAULT * (DERIVATIVE_ORDER_DEFAULT + 1),
         mode=1
     )
-
+    '''
     # Normalize length for LPCCs audio frame sequences
     speaker_audios_lpcc_filled_zeros = _fill_speakers_audios_features(
         speaker_audios_lpccs,
@@ -366,14 +372,14 @@ def main():
         feature_num=LPCC_NUM_DEFAULT,
         mode=0
     )
-
+    '''
     speaker_audios_lpcc_filled_circular = _fill_speakers_audios_features(
         speaker_audios_lpccs,
         max_frames=max_frames_lpcc,
         feature_num=LPCC_NUM_DEFAULT,
         mode=1
     )
-
+    '''
     # Normalize length of Mel-scaled spectrograms audio frame sequences
     speaker_audios_mel_spectrogram_filled_zeros = _fill_speakers_audios_features(
         speaker_audios_mel_spectrograms,
@@ -381,7 +387,7 @@ def main():
         feature_num=MEL_FILTER_BANK_DEFAULT,
         mode=0
     )
-
+    '''
     speaker_audios_mel_spectrogram_filled_circular = _fill_speakers_audios_features(
         speaker_audios_mel_spectrograms,
         max_frames=max_frames_mel,
@@ -450,8 +456,9 @@ def main():
     '''
 
     one_hot_encoded_labels_mfcc_filled_circular = _one_hot_encode_state_labels(
-        labels_mfcc_filled_circular,
-        speaker_indexes
+        speakers_raw_state_labels=labels_mfcc_filled_circular,
+        speaker_indexes=speaker_indexes,
+        n_states=_N_STATES_MFCCS
     )
 
     '''
@@ -462,8 +469,9 @@ def main():
     '''
 
     one_hot_encoded_labels_lpcc_filled_circular = _one_hot_encode_state_labels(
-        labels_lpcc_filled_circular,
-        speaker_indexes
+        speakers_raw_state_labels=labels_lpcc_filled_circular,
+        speaker_indexes=speaker_indexes,
+        n_states=_N_STATES_LPCCS
     )
 
     '''
@@ -474,8 +482,9 @@ def main():
     '''
 
     one_hot_encoded_labels_mel_spectrogram_filled_circular = _one_hot_encode_state_labels(
-        labels_mel_spectr_filled_circular,
-        speaker_indexes
+        speakers_raw_state_labels=labels_mel_spectr_filled_circular,
+        speaker_indexes=speaker_indexes,
+        n_states=_N_STATES_MEL_SPEC
     )
 
 
@@ -546,6 +555,7 @@ def main():
         one_hot_encoded_labels_mel_spectrogram_filled_zeros
     )
     '''
+
     df_mel_spectrogram_filled_circular = _generate_output_dataframe(
         audios_feature_tensor_mel_spectrogram_filled_circular,
         one_hot_encoded_labels_mel_spectrogram_filled_circular
