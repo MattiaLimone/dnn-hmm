@@ -3,6 +3,7 @@ import os
 import numpy as np
 import librosa
 import librosa.display
+from spafe.utils import preprocessing
 from pydub import AudioSegment, silence
 import soundfile as sf
 from typing import final
@@ -11,7 +12,7 @@ import shutil
 
 TRAIN_PERCENTAGE: final = 0.70
 MINIMUM_SILENCE_LENGTH: final = 500
-SILENCE_THRESHOLD: final = -16
+SILENCE_THRESHOLD: final = -35
 SEEK_STEP = 2
 _TMP_DIR_NAME = "tmp"
 
@@ -28,14 +29,15 @@ def remove_silence(path: str, export_path: str = None):
    """
 
     # Read the Audiofile
-    data, sr = librosa.load(path)
+    data, sr = sf.read(path)
 
+    '''    
     # Name extraction from path
     filename = os.path.basename(path)
 
     # Dirname extraction
     tmp_export_dir = os.path.dirname(path) + "/" + _TMP_DIR_NAME
-
+   
     if export_path is not None:
         # Check if export path exist
         if not os.path.exists(export_path):
@@ -73,6 +75,8 @@ def remove_silence(path: str, export_path: str = None):
     else:
         # Delete temporary directory
         shutil.rmtree(tmp_export_dir)
+    '''
+    energy, vad, data = preprocessing.remove_silence(sig=data,fs=sr,threshold=SILENCE_THRESHOLD)
 
     return data, sr
 

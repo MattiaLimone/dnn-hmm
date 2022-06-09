@@ -3,7 +3,7 @@ import numpy as np
 
 LPCC_NUM_DEFAULT = 13
 _LIFTER = 0
-_NORMALIZE = True
+_NORMALIZE = 1
 
 
 def extract_lpccs(signal: np.ndarray, sr: int, n_lpcc: int = LPCC_NUM_DEFAULT) -> np.ndarray:
@@ -23,5 +23,5 @@ def extract_lpccs(signal: np.ndarray, sr: int, n_lpcc: int = LPCC_NUM_DEFAULT) -
     if n_lpcc <= 0:
         raise ValueError("Number of LPCCs must be strictly positive")
 
-    lpccs = lpcc(sig=signal, fs=sr, num_ceps=n_lpcc, lifter=_LIFTER, normalize=_NORMALIZE)
+    lpccs = lpcc(sig=signal, fs=sr, num_ceps=n_lpcc, win_type="hamming", lifter=_LIFTER, normalize=_NORMALIZE)
     return np.array(lpccs)
