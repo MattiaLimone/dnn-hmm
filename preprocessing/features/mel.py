@@ -1,13 +1,16 @@
 import numpy as np
 import librosa
 from typing import final
-from spafe.utils.spectral import powspec, power_spectrum
-from spafe.features.mfcc import mfcc
-from spafe.fbanks.mel_fbanks import mel_filter_banks
-import spafe
+
+
 MFCC_NUM_DEFAULT: final = 13
 DERIVATIVE_ORDER_DEFAULT: final = 2
 MEL_FILTER_BANK_DEFAULT: final = 128
+_N_FFT_DEFAULT: final = 2048
+_HOP_LENGTH_DEFAULT: final = 512
+_WINDOW_TYPE_HANN = "hann"
+_WINDOW_TYPE_HAMMING = "hamming"
+_SPECTRUM_POWER: final = 2
 
 
 def extract_mfccs(signal: np.ndarray, sr: int, n_mfcc=MFCC_NUM_DEFAULT, order=DERIVATIVE_ORDER_DEFAULT) -> np.ndarray:
@@ -31,13 +34,14 @@ def extract_mfccs(signal: np.ndarray, sr: int, n_mfcc=MFCC_NUM_DEFAULT, order=DE
         raise ValueError("The derivative order must be positive")
 
     mfccs = librosa.feature.mfcc(y=signal, n_mfcc=n_mfcc, sr=sr)
-    #mfccs = mfcc(sig=signal, fs=sr, num_ceps=n_mfcc, normalize=0)
+    # mfccs = mfcc(sig=signal, fs=sr, num_ceps=n_mfcc, normalize=0)
     mfccs_and_deltas = np.copy(mfccs)
 
     for i in range(1, order + 1):
         mfccs_and_deltas = np.concatenate((mfccs_and_deltas, librosa.feature.delta(mfccs, order=order)))
 
     return mfccs_and_deltas.transpose()
+
 
 def extract_mel_spectrum(signal: np.ndarray, sr: int, n_filter_bank: int = MEL_FILTER_BANK_DEFAULT) -> np.ndarray:
     """
@@ -55,8 +59,15 @@ def extract_mel_spectrum(signal: np.ndarray, sr: int, n_filter_bank: int = MEL_F
     if n_filter_bank < 0:
         raise ValueError("Filter bank number must be non-negative")
 
-    mel_spectrum = librosa.feature.melspectrogram(y=signal, sr=sr, n_mels=n_filter_bank, n_fft=2048, hop_length=512,
-                                                  power=2, window="hann")
+    mel_spectrum = librosa.feature.melspectrogram(
+        y=signal,
+        sr=sr,
+        n_mels=n_filter_bank,
+        n_fft=_N_FFT_DEFAULT,
+        hop_length=_HOP_LENGTH_DEFAULT,
+        power=_SPECTRUM_POWER,
+        window=_WINDOW_TYPE_HAMMING
+    )
     ps_db = librosa.power_to_db(mel_spectrum, ref=np.max)
 
     return ps_db.transpose()

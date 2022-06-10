@@ -1,6 +1,5 @@
-import os
 import re
-from typing import final, Optional
+from typing import final
 from tqdm.auto import tqdm
 import utils as utl
 from features.mel import extract_mfccs, extract_mel_spectrum, MFCC_NUM_DEFAULT, MEL_FILTER_BANK_DEFAULT, \
@@ -12,22 +11,25 @@ import pandas as pd
 import pickle
 from collections import OrderedDict
 import sklearn as skl
+import scipy.sparse as sp
 
 
-_DATASET_PATH: final = "data/lisa/data/timit/raw/TIMIT/TRAIN/DR4"
+_DATASET_PATH: final = "data/lisa/data/timit/raw/TIMIT/"
 _SPEAKER_INDEXES_PATH: final = "data/speakerindexes/speakerindexes.pkl"
 _TRAIN_SET_PATH: final = "data/cleaned/train"
 _TEST_SET_PATH: final = "data/cleaned/test"
 _SPEAKER_DIR_REGEX: final = re.compile("[A-Z]{4}[0-9]")
 _AUDIO_REGEX: final = re.compile("(.*)\\.WAV")
-_EXCLUDED_SPEAKERS: final = {}
-_EXCLUDED_SPEAKERS_: final = {
+
+'''
+_EXCLUDED_SPEAKERS: final = {
     "MWBT0", "FSLB1", "MRCZ0", "MPGL0", "FJRE0", "MRGG0", "MJJG0", "MCTW0", "MROA0", "MKLT0", "MRPP0", "MRJR0", "FDML0",
     "FMEM0", "FPJF0", "FDXW0", "MDSS0", "FCAJ0", "FMMH0", "MDMT0", "MMDS0", "MMGK0", "MRJM0", "MRJT0", "MRLJ0", "MZMB0",
     "FDFB0", "FSJS0", "MPRD0", "MTKP0", "MPEB0", "FLKM0", "FPAF0", "MMGC0", "MTAS0", "MKRG0", "MMEA0", "FLET0", "MSDB0",
     "MBML0", "FREH0", "FCRZ0", "MDLM0", "MJPG0", "MRLD0", "MEWM0", "FGMB0", "MMCC0", "FHXS0", "FJDM2", "FTAJ0", "MRXB0",
     "MBDG0", "FADG0"
 }
+'''
 
 _AUDIO_PER_SPEAKER: final = 10
 _AUDIO_DATAFRAME_KEY: final = "Audio_Tensor"
@@ -75,42 +77,6 @@ def _generate_or_load_speaker_ordered_dict(speakers: list, generate: bool = Fals
     return speaker_indexes
 
 
-def _speakers_audios_filename(path: str, speakers_audios: dict, visited: Optional[set] = None):
-    """
-    This recursive function will iterate over the dataset directory to extract the name of each speaker and store it
-    into a dictionary of speaker:path_to_audio_files pairs
-
-    :param path: A string. It's the path to the dataset root folder
-    :param speakers_audios: A dictionary in which all speaker-path_to_audio_file pairs will be stored
-    :param visited: A set. It's used to mark a specific path as already visited
-    :return: Void
-    """
-    if visited is None:
-        visited = set()
-    basename = os.path.basename(path)
-
-    if os.path.isdir(path) and basename not in visited:
-        visited.add(path)
-
-        # Base case: leaf in searched files
-        if _SPEAKER_DIR_REGEX.match(basename) and basename not in _EXCLUDED_SPEAKERS:
-
-            if basename not in speakers_audios:
-                speakers_audios[basename] = []
-
-            for entry in os.listdir(path):
-                if _AUDIO_REGEX.match(entry):
-                    audio_path = path + "/" + entry
-                    speakers_audios[basename].append(audio_path)
-
-        # Recursive call
-        else:
-            for entry in os.listdir(path):
-                newpath = path + "/" + entry
-                if os.path.isdir(newpath):
-                    _speakers_audios_filename(newpath, speakers_audios, visited)
-
-
 def _speakers_audios_mfccs_lpccs_mel_spectrograms_max_frames(speakers_audios_names: dict) -> (dict, dict, dict, int,
                                                                                               int, int):
     """
@@ -140,7 +106,7 @@ def _speakers_audios_mfccs_lpccs_mel_spectrograms_max_frames(speakers_audios_nam
         if speaker not in speaker_audios_mel_spectrogram:
             speaker_audios_mel_spectrogram[speaker] = []
 
-        for audio_path in speakers_audios_names[speaker]:
+        for audio_path in tqdm(speakers_audios_names[speaker], desc=f"Extracting audios for speaker: {speaker}"):
             silence_cleaned_audio, sr = utl.remove_silence(audio_path)
 
             # MFCCs handling
@@ -165,8 +131,8 @@ def _speakers_audios_mfccs_lpccs_mel_spectrograms_max_frames(speakers_audios_nam
             if len(mel_spectrum) > max_frames_mel:
                 max_frames_mel = len(mel_spectrum)
 
-    print(max_frames_mfcc)
-    return speaker_audios_mfccs, speaker_audios_lpccs, speaker_audios_mel_spectrogram, max_frames_mfcc, max_frames_lpcc, max_frames_mel
+    return speaker_audios_mfccs, speaker_audios_lpccs, speaker_audios_mel_spectrogram, max_frames_mfcc,\
+        max_frames_lpcc, max_frames_mel
 
 
 def _fill_speakers_audios_features(speaker_audio_features: dict, max_frames: int, feature_num: int = 0,
@@ -185,7 +151,15 @@ def _fill_speakers_audios_features(speaker_audio_features: dict, max_frames: int
     """
     speaker_audios_features_filled = {}
 
-    for speaker in tqdm(speaker_audio_features, desc=f"Filling audio: "):
+    # Generate desc string
+    mode_string = ""
+    if mode == 0:
+        mode_string = "with 0-valued frames padding"
+    elif mode == 1:
+        mode_string = "repeating frames in a circular fashion"
+    desc = f"Filling audio {mode_string} with max_frames: {max_frames}, feature_num: {feature_num}"
+
+    for speaker in tqdm(speaker_audio_features, desc=desc):
         # If given feature_num is 0, infer feature number by looking at the first audio frame length
         if feature_num == 0:
             feature_num = len(speaker_audio_features[speaker][0][0])
@@ -232,32 +206,30 @@ def _generate_speakers_acoustic_model(speakers_audios_features: dict, n_states: 
     desc = f"Generating speaker-acoustic_models with n_states: {n_states}, n_mix: {n_mix}, n_iter: {n_iter}"
     # For each speaker
     for speaker in tqdm(speakers_audios_features, desc=desc):
-        print(speaker)
+        print(f"\nCurrent speaker: {str(speaker)}")
         # Flatten feature matrix into array of frame features
         speaker_audios = speakers_audios_features[speaker]
-        audio_length = speaker_audios.shape[1]
-        feature_number = speaker_audios.shape[2]
-        number_of_audios = len(speaker_audios)
-        speaker_audios = np.reshape(speaker_audios, newshape=(number_of_audios * audio_length, feature_number))
 
-        # speaker_audios = speaker_audios.reshape(shape=(number_of_audios * audio_length, feature_number))
         # Extract acoustic models and frame-level labels (most likely sequence of states from viterbi algorithm)
-        audio_lengths = np.array([audio_length for i in range(0, number_of_audios)])
         acoustic_models[speaker], acoustic_model_state_labels[speaker] = generate_acoustic_model(
-            speaker_audios, audio_lengths, n_components=n_states, n_mix=n_mix, n_iter=n_iter
+            speaker_audios,
+            label=speaker,
+            n_states=n_states,
+            n_mix=n_mix
         )
 
     return acoustic_models, acoustic_model_state_labels
 
 
-def _one_hot_encode_state_labels(speakers_raw_state_labels: dict, speaker_indexes: dict, n_states: int) -> np.ndarray:
-    N_STATES = n_states
+def _one_hot_encode_state_labels(speakers_raw_state_labels: dict, speaker_indexes: dict, n_states: int) -> \
+        list[sp.lil_matrix]:
     speakers_global_state_labels = {}
     n_audio = 0  # audio number counter
     max_frames = 0  # maximum number of frames
 
+    desc = f"Generating one-hot encode state labels with for audio features with n_states: {n_states}"
     # For each speaker
-    for speaker in speaker_indexes:
+    for speaker in tqdm(speaker_indexes, desc=desc):
         speakers_global_state_labels[speaker] = []
 
         # For each audio state label array of the speaker
@@ -274,17 +246,16 @@ def _one_hot_encode_state_labels(speakers_raw_state_labels: dict, speaker_indexe
             # For all state labels of an audio, replace raw state index with global state index with formula:
             # (n_states*speaker_index) + raw_state_label
             for raw_state_label in raw_audio_state_labels:
-                global_state_label = (N_STATES * speaker_indexes[speaker]) + raw_state_label
+                global_state_label = (n_states * speaker_indexes[speaker]) + raw_state_label
                 global_audio_state_labels = np.append(global_audio_state_labels, global_state_label)
 
             speakers_global_state_labels[speaker].append(global_audio_state_labels)
 
     n_speaker = len(speakers_global_state_labels)
 
-    # Create n_audio x max_frames x (n_states*n_speaker) tensor representing the one-hot encoding of the state labels
-    one_hot_encoded_state_labels = np.zeros(shape=(n_audio, max_frames, N_STATES * n_speaker))
-
-    audio_index = 0  # audio counter to index the one-encoding 3rd-order tensor
+    # Create a list to contain the n_audio sparse matrices representing the one-hot encoding of the state labels with
+    # shape max_frames x (n_states*n_speaker)
+    one_hot_encoded_state_labels = []
 
     # For each speaker
     for speaker in speaker_indexes:
@@ -292,14 +263,21 @@ def _one_hot_encode_state_labels(speakers_raw_state_labels: dict, speaker_indexe
         # For each audio of the speaker
         for global_audio_state_labels in speakers_global_state_labels[speaker]:
 
+            # Create max_frames x (n_states*n_speaker) matrix representing the one-hot encoding of the state labels
+            speaker_one_hot_encoded_state_labels = np.zeros(shape=(max_frames, n_states * n_speaker))
+
             # For each frame of the audio
             for frame_index in range(0, len(global_audio_state_labels)):
+
                 # Get the target most likely state for the frame according to the viterbi algorithm
                 state_index = int(global_audio_state_labels[frame_index])
-                # Set the corresponding component of the one-hot encode label vector to 1
-                one_hot_encoded_state_labels[audio_index, frame_index, state_index] = 1
 
-            audio_index += 1
+                # Set the corresponding component of the one-hot encode label vector to 1
+                speaker_one_hot_encoded_state_labels[frame_index, state_index] = 1
+
+            # Convert the generated one-hot encoded state labels matrix to sparse csr format and store it in the list
+            speaker_one_hot_encoded_state_labels = sp.lil_matrix(speaker_one_hot_encoded_state_labels)
+            one_hot_encoded_state_labels.append(speaker_one_hot_encoded_state_labels)
 
     return one_hot_encoded_state_labels
 
@@ -309,7 +287,7 @@ def _generate_audios_feature_tensor(speaker_audios_features: dict, speaker_index
     audios_feature_tensor = None
 
     # For each speaker
-    for speaker in speaker_indexes:
+    for speaker in tqdm(speaker_indexes, desc="Generating audios feature tensor"):
         # Get the feature matrix for each audio of the speaker, and concatenate it to the final feature tensor
         speaker_audios_feature_tensor = speaker_audios_features[speaker]
 
@@ -323,13 +301,18 @@ def _generate_audios_feature_tensor(speaker_audios_features: dict, speaker_index
     return audios_feature_tensor
 
 
-def _generate_output_dataframe(audios_feature_tensor: np.ndarray, one_hot_encoded_labels: np.ndarray) -> pd.DataFrame:
+def _generate_output_dataframe(audios_feature_tensor: np.ndarray, one_hot_encoded_labels: list[sp.lil_matrix]) -> \
+        pd.DataFrame:
+    """
+
+    :rtype: pd.DataFrame
+    """
     df = pd.DataFrame(columns=[_AUDIO_DATAFRAME_KEY, _STATE_PROB_KEY])
     df[_AUDIO_DATAFRAME_KEY] = df[_AUDIO_DATAFRAME_KEY].astype(object)
     df[_STATE_PROB_KEY] = df[_STATE_PROB_KEY].astype(object)
 
     # For each audio feature matrix
-    for i in range(0, len(audios_feature_tensor)):
+    for i in tqdm(range(0, len(audios_feature_tensor)), desc="Generating output dataframes"):
         # Get feature matrix and state labels probabilities, putting them into a pandas dataframe
         df.loc[i] = (audios_feature_tensor[i], one_hot_encoded_labels[i])
 
@@ -337,10 +320,13 @@ def _generate_output_dataframe(audios_feature_tensor: np.ndarray, one_hot_encode
 
 
 def main():
-    speakers_audios_names = {}
 
     # Get audio paths, grouped by speaker
-    _speakers_audios_filename(_DATASET_PATH, speakers_audios_names)
+    speakers_audios_names = utl.speaker_audio_filenames(
+        path=_DATASET_PATH,
+        speaker_dir_regex=_SPEAKER_DIR_REGEX,
+        audio_file_regex=_AUDIO_REGEX
+    )
 
     # Generate the speaker indexes to grant the speakers are always processed in the same order (or load it if saved)
     speaker_indexes = _generate_or_load_speaker_ordered_dict(list(speakers_audios_names.keys()), generate=True)
@@ -446,7 +432,6 @@ def main():
         n_iter=_N_ITER_LPCCS
     )
 
-
     # One-hot encode frame-level state labels as vectors
     '''
     one_hot_encoded_labels_mfcc_filled_zeros = _one_hot_encode_state_labels(
@@ -486,7 +471,6 @@ def main():
         speaker_indexes=speaker_indexes,
         n_states=_N_STATES_MEL_SPEC
     )
-
 
     # Construct the audio feature tensor for both MFCCs and LPCCs
     '''
@@ -560,7 +544,6 @@ def main():
         audios_feature_tensor_mel_spectrogram_filled_circular,
         one_hot_encoded_labels_mel_spectrogram_filled_circular
     )
-
 
     # Split generated dataframes into train and test sets
     '''

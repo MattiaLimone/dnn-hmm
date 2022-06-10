@@ -29,7 +29,7 @@ def main():
 
     for path in tqdm(results):
         filename = str(os.path.basename(path))
-        data, sr = utl.remove_silence(path=path, export_path='data/test/')
+        data, sr = utl.remove_silence(path=path)
 
         # MFCCs
         mfcc = extract_mfccs(signal=data, sr=sr, n_mfcc=MFCC_NUM_DEFAULT)
@@ -60,8 +60,7 @@ def main():
     print("Shape: " + str(train_set_array_mfcc.shape))
 
     # MFCCs acoustic models
-    gmmhmm_model, all_audios_states = generate_acoustic_model(train_set_array_mfcc, train_set_lengths_mfcc,
-                                                              n_components=5, n_mix=7)
+    gmmhmm_model, all_audios_states = generate_acoustic_model(train_set_array_mfcc, label="dummy", n_mix=7)
     print("MFCCs: ")
     print(train_set_lengths_mfcc)
     print([len(audio_states) for audio_states in all_audios_states])
@@ -81,8 +80,7 @@ def main():
         print(best_params)
 
     # Mel-spectrum acoustic models
-    gmmhmm_model, all_audios_states = generate_acoustic_model(train_set_array_mel_spec, train_set_lengths_mel_spec,
-                                                              n_components=5, n_mix=2)
+    gmmhmm_model, all_audios_states = generate_acoustic_model(train_set_array_mel_spec, label="dummy", n_mix=2)
     print("Mel-spectrum: ")
     print(train_set_lengths_mel_spec)
     print([len(audio_states) for audio_states in all_audios_states])
@@ -106,8 +104,7 @@ def main():
         print(best_params)
 
     # LPCCs acoustic models
-    gmmhmm_model, all_audios_states = generate_acoustic_model(train_set_array_lpcc, train_set_lengths_lpcc,
-                                                              n_components=4, n_mix=3)
+    gmmhmm_model, all_audios_states = generate_acoustic_model(train_set_array_lpcc, label="dummy", n_mix=3)
     print("LPCCs: ")
     print(train_set_lengths_mel_spec)
     print([len(audio_states) for audio_states in all_audios_states])

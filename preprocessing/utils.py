@@ -1,32 +1,25 @@
 # Loading the Libraries
 import os
 import numpy as np
-import librosa
-import librosa.display
 from spafe.utils import preprocessing
-from pydub import AudioSegment, silence
 import soundfile as sf
-from typing import final
-import shutil
-
+from typing import final, Optional
+import re
 
 TRAIN_PERCENTAGE: final = 0.70
 MINIMUM_SILENCE_LENGTH: final = 500
 SILENCE_THRESHOLD: final = -35
 SEEK_STEP = 2
-_TMP_DIR_NAME = "tmp"
 
 
-def remove_silence(path: str, export_path: str = None):
+def remove_silence(path: str) -> (np.ndarray, int):
     """
-   Removes each silence frame longer than MINIMUM_SILENCE_LENGTH and not louder than SILENCE_THRESHOLD by an audio file
-   from the given path, with a silence seek equal to SEEK_STEP, and then returns the silence-cleaned audio, exporting it
-   to the export path (if given).
+    Removes each silence frame longer than MINIMUM_SILENCE_LENGTH and not louder than SILENCE_THRESHOLD by an audio file
+    from the given path, with a silence seek equal to SEEK_STEP, and then returns the silence-cleaned audio.
 
-   :param path: a string representing the path to the audio file to remove the silence from.
-   :param export_path: a string representing the export path for the silence-cleaned audio (default: None).
-   :return: the silence-cleaned audio file, alongside with the sample rate.
-   """
+    :param path: a string representing the path to the audio file to remove the silence from.
+    :return: the silence-cleaned audio file, alongside with the sample rate.
+    """
 
     # Read the Audiofile
     data, sr = sf.read(path)
@@ -76,7 +69,7 @@ def remove_silence(path: str, export_path: str = None):
         # Delete temporary directory
         shutil.rmtree(tmp_export_dir)
     '''
-    energy, vad, data = preprocessing.remove_silence(sig=data,fs=sr,threshold=SILENCE_THRESHOLD)
+    energy, vad, data = preprocessing.remove_silence(sig=data, fs=sr, threshold=SILENCE_THRESHOLD)
 
     return data, sr
 
@@ -113,3 +106,72 @@ def fill_audio_frames(audio_frames: np.ndarray, target_len: int, mode: int = 0) 
         added_frames += 1
 
     return target_audio
+
+
+def speaker_audio_filenames(path: str, speaker_dir_regex: re.Pattern, audio_file_regex: re.Pattern) -> \
+        dict[str, list[str]]:
+    """
+    This function will iterate recursively over the dataset directory, processing each speaker directory whose name
+    whose name matches the given speaker_dir_regex, and storing each audio file that matches the given audio_file_regex
+    into a dictionary composed of speaker:path_to_audio_files pairs.
+
+    :param path: A string representing the path to the dataset root folder.
+    :param speaker_dir_regex: regex to match speaker directories.
+    :param audio_file_regex: regex to match audio files in the speaker directories.
+    :return: A dictionary of speaker:path_to_audio_files pairs.
+    :rtype: dict[str, list[str]]
+   """
+    speakers_audios_filenames: dict[str, list[str]] = {}
+    _speakers_audios_filenames_rec(
+        path=path,
+        speakers_audios=speakers_audios_filenames,
+        speaker_dir_regex=speaker_dir_regex,
+        audio_file_regex=audio_file_regex
+    )
+
+    return speakers_audios_filenames
+
+
+def _speakers_audios_filenames_rec(path: str, speakers_audios: dict[str, list[str]], speaker_dir_regex: re.Pattern,
+                                   audio_file_regex: re.Pattern, visited: Optional[set] = None):
+    """
+    This function will iterate recursively over the dataset directory, processing each speaker directory whose name
+    whose name matches the given speaker_dir_regex, and storing each audio file that matches the given audio_file_regex
+    into a dictionary composed of speaker:path_to_audio_files pairs.
+
+    :param path: A string representing the path to the dataset root folder.
+    :param speakers_audios: an empty dictionary in which all speaker-path_to_audio_file pairs will be stored
+    :param speaker_dir_regex: regex to match speaker directories.
+    :param audio_file_regex: regex to match audio files in the speaker directories.
+    :param visited: A set. It's used to mark a specific path as already visited.
+    """
+    if visited is None:
+        visited = set()
+    basename = os.path.basename(path)
+
+    if os.path.isdir(path) and basename not in visited:
+        visited.add(path)
+
+        # Base case: leaf in searched files
+        if speaker_dir_regex.match(basename):
+
+            if basename not in speakers_audios:
+                speakers_audios[basename] = []
+
+            for entry in os.listdir(path):
+                if audio_file_regex.match(entry):
+                    audio_path = path + "/" + entry
+                    speakers_audios[basename].append(audio_path)
+
+        # Recursive call
+        else:
+            for entry in os.listdir(path):
+                newpath = path + "/" + entry
+                if os.path.isdir(newpath):
+                    _speakers_audios_filenames_rec(
+                        path=newpath,
+                        speakers_audios=speakers_audios,
+                        speaker_dir_regex=speaker_dir_regex,
+                        audio_file_regex=audio_file_regex,
+                        visited=visited
+                    )
