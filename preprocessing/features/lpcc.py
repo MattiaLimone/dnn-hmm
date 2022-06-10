@@ -1,9 +1,12 @@
-from spafe.features.lpc import lpcc
+from typing import final
 import numpy as np
+import torch
+from lpctorch import LPCCoefficients
 
-LPCC_NUM_DEFAULT = 13
-_LIFTER = 0
-_NORMALIZE = 1
+
+LPCC_NUM_DEFAULT: final = 13
+_FRAME_DURATION: final = .016
+_FRAME_OVERLAP: final = .5
 
 
 def extract_lpccs(signal: np.ndarray, sr: int, n_lpcc: int = LPCC_NUM_DEFAULT) -> np.ndarray:
@@ -23,5 +26,21 @@ def extract_lpccs(signal: np.ndarray, sr: int, n_lpcc: int = LPCC_NUM_DEFAULT) -
     if n_lpcc <= 0:
         raise ValueError("Number of LPCCs must be strictly positive")
 
-    lpccs = lpcc(sig=signal, fs=sr, num_ceps=n_lpcc, win_type="hamming", lifter=_LIFTER, normalize=_NORMALIZE)
-    return np.array(lpccs)
+
+    signal = torch.from_numpy(signal.reshape(-1, 1).transpose())
+
+    # lpccs = lpcc(sig=signal, fs=sr, num_ceps=n_lpcc, win_type="hamming", lifter=_LIFTER, normalize=_NORMALIZE)
+
+    lpc_prep = LPCCoefficients(
+        sr,
+        _FRAME_DURATION,
+        _FRAME_OVERLAP,
+        order=(n_lpcc - 1)
+    )
+
+    alphas = lpc_prep(signal)
+    alphas = alphas.cpu().detach().numpy()
+
+    lpccs = alphas[0]
+
+    return lpccs

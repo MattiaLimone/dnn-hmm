@@ -1,6 +1,6 @@
 from typing import final
 import numpy as np
-from hmmlearn.hmm import GMMHMM
+from sequentia.classifiers import GMMHMM
 from tqdm.auto import tqdm
 from preprocessing.utils import TRAIN_PERCENTAGE
 
@@ -96,7 +96,7 @@ def gmm_hmm_grid_search(X: np.ndarray, sequence_lengths: np.ndarray = None, min_
     return best_model_grid, best_model_params, best_model_score
 
 
-def generate_acoustic_model(X: np.ndarray, sequence_lengths: np.ndarray, n_components: int = N_COMPONENTS,
+def generate_acoustic_model(X: np.ndarray, label: str, n_components: int = N_COMPONENTS,
                             n_mix: int = N_MIX, n_iter: int = N_ITER) -> (GMMHMM, list):
     """
     Fits an acoustic GMM-HMM model on the given audio, which gives a statistical representation of the speaker's audios
@@ -121,19 +121,30 @@ def generate_acoustic_model(X: np.ndarray, sequence_lengths: np.ndarray, n_compo
     # print(sequence_lengths)
     X = X.astype(np.longfloat)
     # Train the GMM-HMM model on the given audios
-    model = GMMHMM(n_components=n_components, covariance_type='diag', n_iter=n_iter, n_mix=n_mix)
-    #model.transmat_ = np.array([1/n_components for _ in range(n_components)])
-    #model.startprob_ = np.array([1/n_components for _ in range(n_components)])
-    model.fit(X, sequence_lengths)
+    model = GMMHMM(label=label, n_states= n_components, n_components=n_mix, covariance_type='diag', topology='ergodic')
+    model.set_random_initial()
+    model.set_random_transitions()
+    # model.transmat_ = np.array([1/n_components for _ in range(n_components)])
+    # model.startprob_ = np.array([1/n_components for _ in range(n_components)])
+
+    model.fit(list(X))
 
     audios_states = []
     sequence_start = 0
+
+    """
     # For each audio, apply the viterbi algorithm to get the most likely state sequence and add it to the return list
     for sequence_length in sequence_lengths:
         sequence_end = sequence_length + sequence_start
         audio = X[sequence_start:sequence_end]
-        log_prob, audio_states = model.decode(audio, algorithm='viterbi')
+        log_prob, audio_states = model.model.decode(audio, algorithm='viterbi')
         audios_states.append(audio_states)
         sequence_start = sequence_end
+    """
+
+    for i in range(0, X.shape[0]):
+        audio = X[i]
+        log_prob, audio_states = model.model.decode(audio, algorithm='viterbi')
+        audios_states.append(audio_states)
 
     return model, audios_states
