@@ -44,7 +44,7 @@ def main():
     )
 
     # model.build()
-    model.summary()
+    model.summary(expand_nested=True)
 
 
 if __name__ == "__main__":
