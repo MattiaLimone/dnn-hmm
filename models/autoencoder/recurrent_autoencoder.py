@@ -1,8 +1,6 @@
-from typing import Iterable, final, Optional, Union, Sized
-import numpy as np
+from typing import Iterable, final, Optional, Union
 from autoencoder import AutoEncoder
-from keras.layers import GRU, LSTM, Layer, BatchNormalization, AveragePooling1D, Flatten, \
-    Dense, Dropout, Conv1DTranspose, Reshape
+from keras.layers import GRU, LSTM, RepeatVector
 
 _LAYER_NUM_DEFAULT: final = 3
 _LAYER_REDUCTION_FACTOR: final = 0.5
@@ -116,7 +114,8 @@ class RecurrentAutoEncoder(AutoEncoder):
             bottleneck_activation,
             bottleneck_recurrent_activation
         )
-        decoder_layers = self._build_decoder_layers()
+        timesteps = input_shape[1]
+        decoder_layers = self._build_decoder_layers(timesteps)
 
         super(RecurrentAutoEncoder, self).__init__(
             input_shape=input_shape,
@@ -178,32 +177,57 @@ class RecurrentAutoEncoder(AutoEncoder):
         units = latent_space_dim
 
         # Construct either LSTM or GRU
-        bottleneck = constructor(
-            units=units,
-            activation=activation,
-            recurrent_activation=recurrent_activation,
-            kernel_initializer=self._kernel_initializer,
-            kernel_regularizer=self._kernel_regularizer,
-            bias_initializer=self._bias_initializer,
-            bias_regularizer=self.bias_regularizer,
-            activity_regularizer=self._activity_regularizer,
-            recurrent_initializer=self._recurrent_initializer,
-            recurrent_regularizer=self._recurrent_regularizer,
-            dropout=self._recurrent_units_dropout,
-            recurrent_dropout=self._recurrent_dropout,
-            return_sequences=True,
-            go_backwards=self._go_backwards
-        )
+        if self._bottleneck_returns_sequences:
+            bottleneck = constructor(
+                units=units,
+                activation=activation,
+                recurrent_activation=recurrent_activation,
+                kernel_initializer=self._kernel_initializer,
+                kernel_regularizer=self._kernel_regularizer,
+                bias_initializer=self._bias_initializer,
+                bias_regularizer=self.bias_regularizer,
+                activity_regularizer=self._activity_regularizer,
+                recurrent_initializer=self._recurrent_initializer,
+                recurrent_regularizer=self._recurrent_regularizer,
+                dropout=self._recurrent_units_dropout,
+                recurrent_dropout=self._recurrent_dropout,
+                return_sequences=True,
+                go_backwards=self._go_backwards
+            )
+        else:
+            bottleneck = constructor(
+                units=units,
+                activation=activation,
+                recurrent_activation=recurrent_activation,
+                kernel_initializer=self._kernel_initializer,
+                kernel_regularizer=self._kernel_regularizer,
+                bias_initializer=self._bias_initializer,
+                bias_regularizer=self.bias_regularizer,
+                activity_regularizer=self._activity_regularizer,
+                recurrent_initializer=self._recurrent_initializer,
+                recurrent_regularizer=self._recurrent_regularizer,
+                dropout=self._recurrent_units_dropout,
+                recurrent_dropout=self._recurrent_dropout,
+                return_sequences=False,
+                go_backwards=self._go_backwards
+            )
 
         return bottleneck
 
-    def _build_decoder_layers(self) -> list[Union[LSTM, GRU]]:
+    def _build_decoder_layers(self, timesteps: int) -> list[Union[LSTM, GRU]]:
         """
         Build the decoder block, usually symmetrical to the encoder
+
+        :param timesteps: number of timesteps.
 
         :return: list of created LSTM or GRU decoder blocks
         """
         decoder_layers: list[Union[LSTM, GRU]] = []
+
+        # If bottleneck doesn't return sequences, add a RepeatVector layer prior to the decoder
+        if not self._bottleneck_returns_sequences:
+            repeat_vector = RepeatVector(timesteps)
+            decoder_layers.append(repeat_vector)
 
         for layer_index in reversed(range(len(self._unit_types))):
 
@@ -233,4 +257,3 @@ class RecurrentAutoEncoder(AutoEncoder):
             decoder_layers.append(recurrent_layer)
 
         return decoder_layers
-
