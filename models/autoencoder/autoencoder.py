@@ -1,6 +1,6 @@
 from keras.models import Sequential
 import keras
-from keras.layers import Dense, TimeDistributed, Layer, InputLayer
+from keras.layers import Dense, TimeDistributed, Layer, InputLayer, BatchNormalization
 from typing import final, Optional, Union, Any, Iterable
 
 
@@ -15,7 +15,8 @@ class AutoEncoder(keras.models.Model):
     """
 
     def __init__(self, input_shape: tuple[int, ...], encoder_layers: Iterable[Layer], bottleneck: Layer,
-                 decoder_layers: Optional[Iterable[Layer]] = None, outputs_sequences: bool = False):
+                 decoder_layers: Optional[Iterable[Layer]] = None, do_batch_norm: bool = False,
+                 outputs_sequences: bool = False):
         """
         Constructor. Instantiates a new autoencoder with the given encoder and decoder layers and builds it, if input
         shape is given.
@@ -27,6 +28,7 @@ class AutoEncoder(keras.models.Model):
         :param decoder_layers: an iterable containing the decoder layers (no InputLayer must be given, or ValueError
                                will be raised); by default, this is None since the autoencoder structure is assumed to
                                be symmetrical (hence encoder layers are copied in reverse order in decoder layers).
+        :param do_batch_norm: whether or not to add a batch normalization layer before the output layer of the decoder.
         :param outputs_sequences: a boolean indicating whether or not the output of the network should be a sequence.
 
         :raises ValueError: if given n_features is less than 1, if input_shape last element does not coincide with
@@ -89,6 +91,10 @@ class AutoEncoder(keras.models.Model):
                 if isinstance(layer, InputLayer):
                     raise ValueError("Given layers must not be InputLayer instances")
                 self._decoder.add(layer)
+
+        # Add batch normalization layer before the output layer, if required
+        if do_batch_norm:
+            self._decoder.add(BatchNormalization("output_batch_normalization"))
 
         # Add last layer that has the same size as the input of the network (TimeDistributed if the input is a sequence)
         if outputs_sequences:

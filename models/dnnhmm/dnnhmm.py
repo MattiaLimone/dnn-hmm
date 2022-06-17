@@ -5,19 +5,20 @@ from keras.models import Model
 from scipy.stats import rv_continuous
 
 
-class _NNRandomVariable(rv_continuous):
+class _DNNHMMRandomVariable(rv_continuous):
     """
-    Random variable that models the posterior distribution of a neural network output classes, given an instance x:
+    Random variable that models the posterior distribution of a deep neural network output classes, given an instance x:
     P(q | x), for each output class q.
     """
 
-    def __init__(self, model: Model, name: str = "NNRandomVariable", longname: str = "NNRandomVariable",
+    def __init__(self, model: Model, name: str = "DNNHMMRandomVariable", longname: str = "DNNHMMRandomVariable",
                  seed: Optional[int] = None):
         super().__init__(name=name, longname=longname, seed=seed)
         # TODO: add checks about compilation and fitting of the model and consistent outputs
         self.__model = model
 
     def _pdf(self, x, *args):
+        # TODO: convert into likelihood
         return self.__model(x).numpy()
 
     @property
@@ -56,7 +57,7 @@ class _NNRandomVariable(rv_continuous):
         """
         if size is None:
             size = self.__model.output_shape[-1]
-        return super(rv_continuous, self).rvs(size=size, random_state=random_state, scale=scale, **kwargs)
+        return super().rvs(size=size, random_state=random_state, scale=scale, **kwargs)
 
 
 class DNNHMM(base._BaseHMM):
@@ -227,7 +228,7 @@ class DNNHMM(base._BaseHMM):
         return observations_log_likelihood
 
     def _generate_sample_from_state(self, state, random_state=None):
-        dnn_rv = _NNRandomVariable(
+        dnn_rv = _DNNHMMRandomVariable(
             self.__emission_model,
             name="DNNHMMRandomVariable",
             longname="DNNHMMRandomVariable",

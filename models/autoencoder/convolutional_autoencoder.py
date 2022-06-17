@@ -118,7 +118,7 @@ class Convolutional1DAutoEncoder(AutoEncoder):
     def __init__(self, input_shape: tuple[int, ...], conv_filters: list[int], conv_kernels_size: list[int],
                  conv_strides: list[int], latent_space_dim: int, conv_pools: list[Optional[int]] = None,
                  dropout_conv: float = 0.0, dropout_dense: float = 0.0, pool_type: str = AVG_POOL,
-                 activation: str = 'relu', ignore_first_convolutional_decoder: bool = False):
+                 activation='relu', ignore_first_convolutional_decoder: bool = False, do_batch_norm: bool = False):
 
         """
         Constructor. Instantiates a new convolutional autoencoder with the given encoder and decoder layers and builds
@@ -135,9 +135,10 @@ class Convolutional1DAutoEncoder(AutoEncoder):
             layers.
         :param dropout_conv: Float between 0 and 1. Fraction of the input units to drop after Convolutional Layer.
         :param dropout_dense: Float between 0 and 1. Fraction of the input units to drop after Dense Layer.
-        :param pool_type: A string. Either "AVG_POOL" or "MAX_POOL" to use an Average Pooling layer or a Max Pooling
+        :param pool_type: A string. Either AVG_POOL" or MAX_POOL to use an Average Pooling layer or a Max Pooling
             layer.
         :param activation: Activation function to use. If you don't specify anything, no activation is applied.
+        :param do_batch_norm: whether or not to add a batch normalization layer before the output layer of the decoder.
         :param ignore_first_convolutional_decoder: A boolean. If true first convolutional layer of the encoder will not
             be added to the decoder as a deconvolutional layer.
         """
@@ -193,7 +194,8 @@ class Convolutional1DAutoEncoder(AutoEncoder):
             encoder_layers=encoder_conv_blocks,
             bottleneck=bottleneck,
             decoder_layers=decoder_conv_blocks,
-            outputs_sequences=False
+            outputs_sequences=False,
+            do_batch_norm=do_batch_norm
         )
 
     def _build_encoder_conv_blocks(self, input_shape: tuple[int, ...]) -> \
@@ -330,7 +332,7 @@ class Convolutional1DAutoEncoder(AutoEncoder):
 
     def _build_decoder_deconv_block(self, layer_index: int):
         """
-        Build an upsampling layers of the decoder.
+        Build an upsampling and deconvolutional layer of the decoder.
 
         :param layer_index: An integer. It's the index of the convolutional layer list of the encoder.
         :return: created UpSampling layer, Conv1DTranspose layer and BatchNormalization layer
