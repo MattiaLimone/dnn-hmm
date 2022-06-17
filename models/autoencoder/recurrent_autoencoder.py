@@ -1,10 +1,9 @@
 from typing import Iterable, final, Optional, Union
 from autoencoder import AutoEncoder
 from keras.layers import GRU, LSTM, RepeatVector
+from keras.losses import MSE
 
-_LAYER_NUM_DEFAULT: final = 3
-_LAYER_REDUCTION_FACTOR: final = 0.5
-_DEFAULT_INPUT_DIM: final = 256
+
 _UNIT_TYPES: final = {
     "GRU": GRU,
     "LSTM": LSTM
@@ -23,7 +22,8 @@ class RecurrentAutoEncoder(AutoEncoder):
                  bottleneck_recurrent_activation: str = 'relu', recurrent_units_dropout: float = 0.0,
                  recurrent_dropout: float = 0.0, recurrent_initializer: str = 'glorot_uniform',
                  kernel_initializer: str = 'orthogonal', bias_initializer: str = 'zeros', recurrent_regularizer=None,
-                 kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, go_backwards: bool = False):
+                 kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, go_backwards: bool = False,
+                 do_batch_norm: bool = True):
         """
         Constructor. Most of the parameters used in keras LSTM/GRU layers can be passed to this method.
 
@@ -62,6 +62,7 @@ class RecurrentAutoEncoder(AutoEncoder):
             Default: None.
         :param go_backwards: Boolean (default False). If True, process the input sequence backwards and return the
             reversed sequence.
+        :param do_batch_norm: whether or not to add a batch normalization layer before the output layer of the decoder.
         """
         if not input_shape and input_shape[-1] < 1:
             raise ValueError('Feature number must be strictly positive. '
@@ -122,6 +123,7 @@ class RecurrentAutoEncoder(AutoEncoder):
             encoder_layers=encoder_layers,
             bottleneck=bottleneck,
             decoder_layers=decoder_layers,
+            do_batch_norm=do_batch_norm,
             outputs_sequences=True
         )
 
@@ -255,5 +257,6 @@ class RecurrentAutoEncoder(AutoEncoder):
                 go_backwards=self._go_backwards
             )
             decoder_layers.append(recurrent_layer)
+            self.compute_loss()
 
         return decoder_layers

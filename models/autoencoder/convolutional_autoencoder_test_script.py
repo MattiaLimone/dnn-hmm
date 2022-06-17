@@ -24,13 +24,13 @@ decoder_layers = [dec_conv2, dec_upsample2, dec_conv3, dec_upsample3, dec_output
 
 
 def main():
-    n_features = 200
-    n_timesteps = 150
+    n_features = 128
+    n_timesteps = 300
     batch_size = 10
-    conv_filters = [12, 8, 4]
-    conv_kernels_size = [3, 4, 2]
-    conv_strides = [1, 1, 1]
-    conv_pools = [2, 2, 2]
+    conv_filters = [32, 64, 128, 256, 512]
+    conv_kernels_size = [5, 5, 5, 3, 3]
+    conv_strides = [1, 1, 1, 1, 1]
+    conv_pools = [1, 1, 1, 1, 1]
     input_shape = (batch_size, n_timesteps, n_features)
 
     model = Convolutional1DAutoEncoder(
@@ -38,7 +38,7 @@ def main():
         conv_filters=conv_filters,
         conv_kernels_size=conv_kernels_size,
         conv_strides=conv_strides,
-        latent_space_dim=50,
+        latent_space_dim=1024,
         conv_pools=conv_pools,
         dropout_dense=0.5
     )
