@@ -1,7 +1,63 @@
-from typing import Optional
+from typing import Optional, Union
 import numpy as np
 from hmmlearn import base
 from keras.models import Model
+from scipy.stats import rv_continuous
+
+
+class _DNNHMMRandomVariable(rv_continuous):
+    """
+    Random variable that models the posterior distribution of a deep neural network output classes, given an instance x:
+    P(q | x), for each output class q.
+    """
+
+    def __init__(self, model: Model, name: str = "DNNHMMRandomVariable", longname: str = "DNNHMMRandomVariable",
+                 seed: Optional[int] = None):
+        super().__init__(name=name, longname=longname, seed=seed)
+        # TODO: add checks about compilation and fitting of the model and consistent outputs
+        self.__model = model
+
+    def _pdf(self, x, *args):
+        # TODO: convert into likelihood
+        return self.__model(x).numpy()
+
+    @property
+    def model(self) -> Model:
+        return self.__model
+
+    @model.setter
+    def model(self, model: Model):
+        # TODO: add checks about compilation and fitting of the model and consistent outputs
+        self.__model = model
+
+    def rvs(self, size=None, random_state: Optional[Union[int, np.random.RandomState, np.random.Generator]] = None,
+            scale=1, **kwargs):
+        """
+        Random variates of given type.
+
+        Parameters
+        ----------
+        scale : array_like, optional
+            Scale parameter (default=1).
+        size : int or tuple of ints, optional
+            Defining number of random variates (by default, it's equal to the given NN output vector size).
+        random_state : {None, int, `~np.random.RandomState`, `~np.random.Generator`}, optional
+            If `seed` is `None` the `~np.random.RandomState` singleton is used.
+            If `seed` is an int, a new ``RandomState`` instance is used, seeded
+            with seed.
+            If `seed` is already a ``RandomState`` or ``Generator`` instance,
+            then that object is used.
+            Default is None.
+
+        Returns
+        -------
+        rvs : ndarray or scalar
+            Random variates of given `size`.
+
+        """
+        if size is None:
+            size = self.__model.output_shape[-1]
+        return super().rvs(size=size, random_state=random_state, scale=scale, **kwargs)
 
 
 class DNNHMM(base._BaseHMM):
@@ -39,7 +95,7 @@ class DNNHMM(base._BaseHMM):
         # TODO: add checks about timesteps
         self.__timesteps = timesteps
 
-        # TODO: add checks about compilation and fitting of the model and consistent output range
+        # TODO: add checks about compilation and fitting of the model and consistent outputs
         self.__emission_model = emission_model
         if emission_model is not None:
             super(base._BaseHMM, self).n_features_in_ = emission_model.input_shape[-1]
@@ -63,7 +119,7 @@ class DNNHMM(base._BaseHMM):
 
     @emission_model.setter
     def emission_model(self, emission_model: Model):
-        # TODO: add checks about compilation and fitting of the model and consistent output range
+        # TODO: add checks about compilation and fitting of the model and consistent outputs
         self.__emission_model = emission_model
         super(base._BaseHMM, self).n_features_in_ = emission_model.input_shape[-1]
 
@@ -149,7 +205,7 @@ class DNNHMM(base._BaseHMM):
             # Get posterior probabilities for each observation of the sequence
             posteriors_sequence = self.__emission_model(
                 sequence
-            )[:, self.__emission_model_output_range[0]:self.__emission_model_output_range[1]]
+            ).numpy()[:, self.__emission_model_output_range[0]:self.__emission_model_output_range[1]]
 
             # For each observation
             for posterior in posteriors_sequence:
@@ -172,4 +228,10 @@ class DNNHMM(base._BaseHMM):
         return observations_log_likelihood
 
     def _generate_sample_from_state(self, state, random_state=None):
-        raise NotImplementedError("Method not implemented: _generate_sample_from_state is not defined for DNNHMM.")
+        dnn_rv = _DNNHMMRandomVariable(
+            self.__emission_model,
+            name="DNNHMMRandomVariable",
+            longname="DNNHMMRandomVariable",
+            seed=random_state
+        )
+        return dnn_rv.rvs(size=self.__emission_model.output_shape[-1], random_state=random_state)

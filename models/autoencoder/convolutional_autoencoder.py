@@ -3,111 +3,10 @@ import numpy as np
 from autoencoder import AutoEncoder
 from keras.layers import MaxPooling1D, UpSampling1D, Conv1D, Layer, BatchNormalization, AveragePooling1D, Flatten, \
     Dense, Dropout, Conv1DTranspose, Reshape
-import keras.backend as K
+from autoencoder import FlattenDenseLayer, _RANDOM_SEED
 
 AVG_POOL: final = "AVG"
 MAX_POOL: final = "MAX"
-_RANDOM_SEED: final = None
-
-
-class FlattenDenseLayer(Layer):
-    """
-    This class represents a simple neural network layer composed of a Flatten layer followed by fully-connected (Dense)
-    layer.
-    """
-
-    def __init__(self, output_dim: int, flatten_data_format: Optional[str] = None, name: Optional[str] = None,
-                 activation=None, use_bias: bool = True, kernel_initializer: str = 'glorot_uniform',
-                 bias_initializer: str = 'zeros', dropout: float = 0.0, kernel_regularizer=None, bias_regularizer=None,
-                 activity_regularizer=None, kernel_constraint=None, bias_constraint=None, **kwargs):
-        """
-        Constructor. Instantiates a Flatten layer followed by a Dense layer that represents the bottleneck.
-
-        :param output_dim: An integer. Dimension of the bottleneck layer.
-        :param flatten_data_format: A string, one of channels_last (default) or channels_first. The ordering of the
-            dimensions in the inputs. channels_last corresponds to inputs with shape (batch, ..., channels) while
-            channels_first corresponds to inputs with shape (batch, channels, ...). It defaults to the image_data_format
-            value found in your Keras config file at ~/.keras/keras.json. If you never set it, then it will be
-            "channels_last".
-        :param name: A string. The name of the layer.
-        :param activation: Activation function to use. If you don't specify anything, no activation is applied.
-        :param use_bias: Boolean, whether the layer uses a bias vector.
-        :param kernel_initializer: Initializer for the kernel weights matrix.
-        :param bias_initializer: Initializer for the bias vector.
-        :param dropout: Float between 0 and 1. Fraction of the input units to drop.
-        :param kernel_regularizer: Regularizer function applied to the kernel weights matrix.
-        :param bias_regularizer: Regularizer function applied to the bias vector.
-        :param activity_regularizer: Regularizer function applied to the output of the layer (its "activation").
-        :param kernel_constraint: Constraint function applied to the kernel weights matrix.
-        :param bias_constraint: Constraint function applied to the bias vector.
-        :param kwargs: Additional parameters inherited from Flatten or Dense layer.
-        """
-
-        super(FlattenDenseLayer, self).__init__(trainable=True, name=name)
-
-        self._flatten_layer = Flatten(data_format=flatten_data_format)
-        self._dense = Dense(
-            units=output_dim,
-            activation=activation,
-            use_bias=use_bias,
-            kernel_initializer=kernel_initializer,
-            bias_initializer=bias_initializer,
-            kernel_regularizer=kernel_regularizer,
-            bias_regularizer=bias_regularizer,
-            activity_regularizer=activity_regularizer,
-            kernel_constraint=kernel_constraint,
-            bias_constraint=bias_constraint,
-            **kwargs
-        )
-        self._dropout = Dropout(rate=dropout, seed=_RANDOM_SEED)
-
-    def call(self, inputs, *args, **kwargs):
-        """
-        Calls the model on new inputs and returns the outputs as tensors, encoding the input tensor in the latent space
-        and trying to reconstruct the input it from this latent representation.
-
-        :param inputs: Input tensor, or dict/list/tuple of input tensors.
-        :param args: Additional positional arguments. May contain tensors, although this is not recommended.
-        :param kwargs: Additional keyword arguments. May contain tensors, although this is not recommended.
-        :return: A tensor or list/tuple of tensors.
-        """
-        flattened = self._flatten_layer(inputs)
-        dense_output = self._dense(flattened)
-        return self._dropout(dense_output)
-
-    def build(self, input_shape):
-        """
-        Creates the variables of the layer
-
-        :param input_shape: Instance of `TensorShape`, or list of instances of `TensorShape` if the layer expects a list
-            of inputs (one instance per input).
-        """
-        self._flatten_layer.build(input_shape)
-        flattened_shape = self._flatten_layer.compute_output_shape(input_shape)
-        self._dense.build(flattened_shape)
-        dense_output_shape = self._dense.compute_output_shape(flattened_shape)
-        self._dropout.build(dense_output_shape)
-        super(FlattenDenseLayer, self).build(input_shape)
-
-    def compute_output_shape(self, input_shape):
-        """
-        Computes the output shape of the layer.
-
-        :param input_shape: hape tuple (tuple of integers) or list of shape tuples (one per output tensor of the layer).
-            Shape tuples can include None for free dimensions, instead of an integer.
-        :return: An input shape tuple.
-        """
-        flattened_input_shape = self._flatten_layer.compute_output_shape(input_shape)
-        return self._dense.compute_output_shape(flattened_input_shape)
-
-    @property
-    def units(self) -> int:
-        """
-        Return the units number of the dense layer
-
-        :return: An integer representing the number of units of the dense layer
-        """
-        return self._dense.units
 
 
 class Convolutional1DAutoEncoder(AutoEncoder):
@@ -118,7 +17,7 @@ class Convolutional1DAutoEncoder(AutoEncoder):
     def __init__(self, input_shape: tuple[int, ...], conv_filters: list[int], conv_kernels_size: list[int],
                  conv_strides: list[int], latent_space_dim: int, conv_pools: list[Optional[int]] = None,
                  dropout_conv: float = 0.0, dropout_dense: float = 0.0, pool_type: str = AVG_POOL,
-                 activation: str = 'relu', ignore_first_convolutional_decoder: bool = False):
+                 activation='relu', ignore_first_convolutional_decoder: bool = False, do_batch_norm: bool = False):
 
         """
         Constructor. Instantiates a new convolutional autoencoder with the given encoder and decoder layers and builds
@@ -135,9 +34,10 @@ class Convolutional1DAutoEncoder(AutoEncoder):
             layers.
         :param dropout_conv: Float between 0 and 1. Fraction of the input units to drop after Convolutional Layer.
         :param dropout_dense: Float between 0 and 1. Fraction of the input units to drop after Dense Layer.
-        :param pool_type: A string. Either "AVG_POOL" or "MAX_POOL" to use an Average Pooling layer or a Max Pooling
+        :param pool_type: A string. Either AVG_POOL" or MAX_POOL to use an Average Pooling layer or a Max Pooling
             layer.
         :param activation: Activation function to use. If you don't specify anything, no activation is applied.
+        :param do_batch_norm: whether or not to add a batch normalization layer before the output layer of the decoder.
         :param ignore_first_convolutional_decoder: A boolean. If true first convolutional layer of the encoder will not
             be added to the decoder as a deconvolutional layer.
         """
@@ -193,7 +93,8 @@ class Convolutional1DAutoEncoder(AutoEncoder):
             encoder_layers=encoder_conv_blocks,
             bottleneck=bottleneck,
             decoder_layers=decoder_conv_blocks,
-            outputs_sequences=False
+            outputs_sequences=False,
+            do_batch_norm=do_batch_norm
         )
 
     def _build_encoder_conv_blocks(self, input_shape: tuple[int, ...]) -> \
@@ -272,7 +173,12 @@ class Convolutional1DAutoEncoder(AutoEncoder):
         :param latent_space_dim: latent space dimension.
         :return: created bottleneck FlattenDenseLayer with given latent space dimension.
         """
-        flatten_dense_layer = FlattenDenseLayer(latent_space_dim, name="encoder_output", dropout=self._dropout_dense)
+        flatten_dense_layer = FlattenDenseLayer(
+            latent_space_dim,
+            name="encoder_output",
+            activation='relu',
+            dropout=self._dropout_dense
+        )
         bottleneck_output_shape = flatten_dense_layer.compute_output_shape(conv_output_shape)
         return flatten_dense_layer, bottleneck_output_shape
 
@@ -290,7 +196,7 @@ class Convolutional1DAutoEncoder(AutoEncoder):
 
         # Add decoder dense layer (and corresponding dropout if given) to the decoder, which output is the flattened
         # final shape of the convolutional block (batch size excluded)
-        decoder_dense = Dense(units=np.prod(conv_output_shape[1:]), name='decoder_dense')
+        decoder_dense = Dense(units=np.prod(conv_output_shape[1:]), name='decoder_dense', activation='relu')
         decoder_layers.append(decoder_dense)
 
         # Add dropout layer if required
@@ -330,7 +236,7 @@ class Convolutional1DAutoEncoder(AutoEncoder):
 
     def _build_decoder_deconv_block(self, layer_index: int):
         """
-        Build an upsampling layers of the decoder.
+        Build an upsampling and deconvolutional layer of the decoder.
 
         :param layer_index: An integer. It's the index of the convolutional layer list of the encoder.
         :return: created UpSampling layer, Conv1DTranspose layer and BatchNormalization layer

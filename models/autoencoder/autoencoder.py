@@ -1,12 +1,114 @@
+import numpy as np
 from keras.models import Sequential
 import keras
-from keras.layers import Dense, TimeDistributed, Layer, InputLayer
+from keras.layers import Dense, TimeDistributed, Layer, InputLayer, BatchNormalization, Flatten, Dropout, Reshape
 from typing import final, Optional, Union, Any, Iterable
 
 
 ENCODER_MODEL_NAME: final = "Encoder"
 DECODER_MODEL_NAME: final = "Decoder"
 _DECODER_LAYER_DEFAULT_POSTFIX = "_decoder"
+_RANDOM_SEED: final = None
+
+
+class FlattenDenseLayer(Layer):
+    """
+    This class represents a simple neural network layer composed of a Flatten layer followed by fully-connected (Dense)
+    layer.
+    """
+
+    def __init__(self, output_dim: int, flatten_data_format: Optional[str] = None, name: Optional[str] = None,
+                 activation=None, use_bias: bool = True, kernel_initializer: str = 'glorot_uniform',
+                 bias_initializer: str = 'zeros', dropout: float = 0.0, kernel_regularizer=None, bias_regularizer=None,
+                 activity_regularizer=None, kernel_constraint=None, bias_constraint=None, **kwargs):
+        """
+        Constructor. Instantiates a Flatten layer followed by a Dense layer that represents the bottleneck.
+
+        :param output_dim: An integer. Dimension of the output.
+        :param flatten_data_format: A string, one of channels_last (default) or channels_first. The ordering of the
+            dimensions in the inputs. channels_last corresponds to inputs with shape (batch, ..., channels) while
+            channels_first corresponds to inputs with shape (batch, channels, ...). It defaults to the image_data_format
+            value found in your Keras config file at ~/.keras/keras.json. If you never set it, then it will be
+            "channels_last".
+        :param name: A string. The name of the layer.
+        :param activation: Activation function to use. If you don't specify anything, no activation is applied.
+        :param use_bias: Boolean, whether the layer uses a bias vector.
+        :param kernel_initializer: Initializer for the kernel weights matrix.
+        :param bias_initializer: Initializer for the bias vector.
+        :param dropout: Float between 0 and 1. Fraction of the input units to drop.
+        :param kernel_regularizer: Regularizer function applied to the kernel weights matrix.
+        :param bias_regularizer: Regularizer function applied to the bias vector.
+        :param activity_regularizer: Regularizer function applied to the output of the layer (its "activation").
+        :param kernel_constraint: Constraint function applied to the kernel weights matrix.
+        :param bias_constraint: Constraint function applied to the bias vector.
+        :param kwargs: Additional parameters inherited from Flatten or Dense layer.
+        """
+
+        super(FlattenDenseLayer, self).__init__(trainable=True, name=name)
+
+        self._flatten_layer = Flatten(data_format=flatten_data_format)
+        self._dense = Dense(
+            units=output_dim,
+            activation=activation,
+            use_bias=use_bias,
+            kernel_initializer=kernel_initializer,
+            bias_initializer=bias_initializer,
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+            kernel_constraint=kernel_constraint,
+            bias_constraint=bias_constraint,
+            **kwargs
+        )
+        self._dropout = Dropout(rate=dropout, seed=_RANDOM_SEED)
+
+    def call(self, inputs, *args, **kwargs):
+        """
+        Calls the model on new inputs and returns the outputs as tensors, encoding the input tensor in the latent space
+        and trying to reconstruct the input it from this latent representation.
+
+        :param inputs: Input tensor, or dict/list/tuple of input tensors.
+        :param args: Additional positional arguments. May contain tensors, although this is not recommended.
+        :param kwargs: Additional keyword arguments. May contain tensors, although this is not recommended.
+        :return: A tensor or list/tuple of tensors.
+        """
+        flattened = self._flatten_layer(inputs)
+        dense_output = self._dense(flattened)
+        return self._dropout(dense_output)
+
+    def build(self, input_shape):
+        """
+        Creates the variables of the layer
+
+        :param input_shape: Instance of `TensorShape`, or list of instances of `TensorShape` if the layer expects a list
+            of inputs (one instance per input).
+        """
+        self._flatten_layer.build(input_shape)
+        flattened_shape = self._flatten_layer.compute_output_shape(input_shape)
+        self._dense.build(flattened_shape)
+        dense_output_shape = self._dense.compute_output_shape(flattened_shape)
+        self._dropout.build(dense_output_shape)
+        super(FlattenDenseLayer, self).build(input_shape)
+
+    def compute_output_shape(self, input_shape):
+        """
+        Computes the output shape of the layer.
+
+        :param input_shape: hape tuple (tuple of integers) or list of shape tuples (one per output tensor of the layer).
+            Shape tuples can include None for free dimensions, instead of an integer.
+        :return: An input shape tuple.
+        """
+        flattened_input_shape = self._flatten_layer.compute_output_shape(input_shape)
+        return self._dense.compute_output_shape(flattened_input_shape)
+
+    @property
+    def units(self) -> int:
+        """
+        Return the units number of the dense layer
+
+        :return: An integer representing the number of units of the dense layer
+        """
+        return self._dense.units
 
 
 class AutoEncoder(keras.models.Model):
@@ -15,19 +117,26 @@ class AutoEncoder(keras.models.Model):
     """
 
     def __init__(self, input_shape: tuple[int, ...], encoder_layers: Iterable[Layer], bottleneck: Layer,
-                 decoder_layers: Optional[Iterable[Layer]] = None, outputs_sequences: bool = False):
+                 decoder_layers: Optional[Iterable[Layer]] = None, add_last_dense_block: bool = True,
+                 do_batch_norm: bool = False, outputs_sequences: bool = False, last_layer_activation=None):
         """
         Constructor. Instantiates a new autoencoder with the given encoder and decoder layers and builds it, if input
         shape is given.
 
-        :param input_shape: a integer tuple representing the input shape the model will be build from.
+        :param input_shape: a integer tuple representing the input shape the model will be build from (batch_size, dim0,
+            dim1, ..., dimN).
         :param encoder_layers: an iterable containing the encoder layers (no InputLayer must be given, or ValueError
                                will be raised).
         :param bottleneck: bottleneck layer which outputs the representation of the input vector in the latent space.
         :param decoder_layers: an iterable containing the decoder layers (no InputLayer must be given, or ValueError
                                will be raised); by default, this is None since the autoencoder structure is assumed to
                                be symmetrical (hence encoder layers are copied in reverse order in decoder layers).
-        :param outputs_sequences: a boolean indicating whether or not the output of the network should be a sequence.
+        :param add_last_dense_block: whether to add last dense block after decoder layers.
+        :param do_batch_norm: whether or not to add a batch normalization layer before the output layer of the decoder.
+        :param outputs_sequences: a boolean indicating whether or not the output of the network should be a sequence; if
+            true, input_shape[1] will be used as timesteps, and the rest of dimensions as output shape.
+        :param last_layer_activation: activation function applied to the output layer, if None is given, then a linear
+                                      activation function is applied (a(x) = x).
 
         :raises ValueError: if given n_features is less than 1, if input_shape last element does not coincide with
                             n_features or if one of the layers contained in encoder_layers or decoder_layers is an
@@ -68,7 +177,7 @@ class AutoEncoder(keras.models.Model):
                 cloned_layer = type(layer).from_config(layer_config)
                 self._decoder.add(cloned_layer)
 
-        # If autoencoder must be asymmetrical
+        # If decoder layers are given explicitly
         else:
             # Add encoder layers
             for layer in encoder_layers:
@@ -90,11 +199,50 @@ class AutoEncoder(keras.models.Model):
                     raise ValueError("Given layers must not be InputLayer instances")
                 self._decoder.add(layer)
 
-        # Add last layer that has the same size as the input of the network (TimeDistributed if the input is a sequence)
-        if outputs_sequences:
-            self._decoder.add(TimeDistributed(Dense(input_shape[-1])))
-        else:
-            self._decoder.add(Dense(input_shape[-1]))
+        # Compute encoder output shape and decoder (temporary) output shape (batch_size, other dimensions...)
+        encoder_output_shape = self._encoder.compute_output_shape(input_shape)
+        decoder_output_shape = self._decoder.compute_output_shape(encoder_output_shape)
+
+        if add_last_dense_block:
+
+            # Add batch normalization layer before the output layer, if required
+            if do_batch_norm:
+                self._decoder.add(BatchNormalization(name="output_batch_normalization"))
+
+            # Add last layer that has the same size as the input of the network
+            if outputs_sequences:
+                # Flatten on all dimensions except for the batch size and timesteps
+                timesteps = input_shape[1]
+                flattened_input_shape = np.product(input_shape[2:])
+                decoder_output_shape_flattened = np.product(decoder_output_shape[2:])
+                self._decoder.add(Reshape((timesteps, decoder_output_shape_flattened), name="pre_output_flatten"))
+
+                # Add time distributed dense output layer
+                self._decoder.add(
+                    TimeDistributed(Dense(flattened_input_shape, activation=last_layer_activation, name="output_dense"))
+                )
+
+                # Reshape output to correct tensor shape (batch_size, timesteps, other dimensions...)
+                self._decoder.add(Reshape((timesteps, ) + input_shape[2:], name="output_reshape"))
+
+            else:
+                # Flatten on all dimensions except for the batch size
+                flattened_input_shape = np.product(input_shape[1:])
+                decoder_output_shape_flattened = np.product(decoder_output_shape[1:])
+                self._decoder.add(Reshape((decoder_output_shape_flattened, ), name="pre_output_flatten"))
+
+                # Add dense output layer
+                self._decoder.add(
+                    Dense(flattened_input_shape, activation=last_layer_activation, name="output_dense")
+                )
+
+                # Reshape output to correct tensor shape (batch_size, other dimensions...)
+                self._decoder.add(Reshape(input_shape[1:], name="output_reshape"))
+
+        decoder_output_shape = self._decoder.compute_output_shape(encoder_output_shape)
+
+        if decoder_output_shape != input_shape:
+            raise ValueError("Input shape and output shape must match exactly")
 
         # Build the model
         self.build(input_shape)
@@ -118,7 +266,6 @@ class AutoEncoder(keras.models.Model):
 
     def get_config(self) -> dict[str, Union[None, list[Optional[dict[str, Any]]], tuple, int]]:
         config_dict = {
-            "n_features": self._n_features,
             "latent_space_dim": self._latent_space_dim,
             **self._encoder.get_config(),
             **self._decoder.get_config()
@@ -395,203 +542,3 @@ class AutoEncoder(keras.models.Model):
     @property
     def latent_space_dim(self) -> int:
         return self._latent_space_dim
-
-    @property
-    def n_features(self) -> int:
-        return self._n_features
-
-
-'''
-_LAYER_NUM_DEFAULT: final = 3
-_LAYER_REDUCTION_FACTOR: final = 0.5
-_DEFAULT_INPUT_DIM: final = 256
-_UNIT_TYPES: final = {
-    "GRU": keras.layers.GRU,
-    "LSTM": keras.layers.LSTM
-}
-# TODO: refactor and generalize RecurrentAutoEncoder
-class RecAutoEncoder(Sequential):
-    """
-    This class represents an LSTM or GRU autoencoder model.
-    """
-
-    def __init__(self, n_encoding_layers: int = _LAYER_NUM_DEFAULT, input_neurons: int = _DEFAULT_INPUT_DIM,
-                 timesteps=None, n_features=None, encoding_dims: Optional[list] = None,
-                 sequential_bottleneck: bool = False, unit_type: str = "LSTM", activation='relu',
-                 recurrent_activation: str = 'sigmoid', dropout: float = 0, recurrent_dropout: float = 0,
-                 recurrent_initializer: str = 'glorot_uniform', kernel_initializer: str = 'orthogonal',
-                 bias_initializer: str = 'zeros', recurrent_regularizer=None, kernel_regularizer=None,
-                 bias_regularizer=None, activity_regularizer=None, recurrent_constraint=None, kernel_constraint=None,
-                 bias_constraint=None, return_sequences: bool = True, return_state: bool = False,
-                 go_backwards: bool = False, stateful: bool = False, time_major: bool = False):
-        """
-        Constructor. Most of the parameters used in keras LSTM/GRU layers can be passed to this method .
-
-        :param n_encoding_layers: Positive integer, dimensionality of the encoder/decoder
-        :param input_neurons: Positive integer, dimensionality of the output space of the first layer
-        :param timesteps: Number of elements of each sequence. Use in the Repeat Vector layer
-        :param n_features: Number of features of each timestep. Used for the Time Distributed layer
-        :param encoding_dims: List of dimension of each layer of the encoder/decoder. Size must be the same 
-            as n_encoding_layers
-        :param unit_type: Decider of the layer type, either LSTM or GRU
-        :param activation: Activation function to use. Default: hyperbolic tangent (tanh). If you pass None, no 
-            activation is applied (ie. "linear" activation: a(x) = x)
-        :param recurrent_activation: Activation function to use for the recurrent step. Default: sigmoid (sigmoid). 
-            If you pass None, no activation is applied (ie. "linear" activation: a(x) = x)
-        :param dropout: Float between 0 and 1. Fraction of the units to drop for the linear transformation of the 
-            inputs. Default: 0
-        :param recurrent_dropout: Float between 0 and 1. Fraction of the units to drop for the linear transformation of 
-            the recurrent state. Default: 0
-        :param recurrent_initializer: Initializer for the recurrent_kernel weights matrix, used for the linear 
-            transformation of the recurrent state. Default: orthogonal
-        :param kernel_initializer: Initializer for the kernel weights matrix, used for the linear transformation of 
-            the inputs. Default: glorot_uniform
-        :param bias_initializer: Initializer for the bias vector. Default: zeros
-        :param recurrent_regularizer: Regularizer function applied to the recurrent_kernel weights matrix. Default: None
-        :param kernel_regularizer: Regularizer function applied to the kernel weights matrix. Default: None
-        :param bias_regularizer: Regularizer function applied to the bias vector. Default: None
-        :param activity_regularizer: Regularizer function applied to the output of the layer (its "activation"). 
-            Default: None
-        :param recurrent_constraint: Constraint function applied to the recurrent_kernel weights matrix. Default: None
-        :param kernel_constraint: Constraint function applied to the kernel weights matrix. Default: None
-        :param bias_constraint: Constraint function applied to the bias vector. Default: None
-        :param return_sequences: Boolean. Whether to return the last output. in the output sequence, or the full 
-            sequence. Default: False.
-        :param return_state: Boolean. Whether to return the last state in addition to the output. Default: False
-        :param go_backwards: Boolean (default False). If True, process the input sequence backwards and return the 
-            reversed sequence
-        :param stateful: Boolean (default False). If True, the last state for each sample at index i in a batch will 
-            be used as initial state for the sample of index i in the following batch
-        :param time_major: The shape format of the inputs and outputs tensors. If True, the inputs and outputs will be 
-            in shape [timesteps, batch, feature], whereas in the False case, it will be [batch, timesteps, feature]. 
-            Using time_major = True is a bit more efficient because it avoids transposes at the beginning and end of the
-            RNN calculation. However, most TensorFlow data is batch-major, so by default this function accepts input 
-            and emits output in batch-major form
-        """
-        super().__init__()
-        if n_encoding_layers <= 0:
-            raise ValueError("n_encoding_layers must be positive")
-        if input_neurons <= 0:
-            raise ValueError("input_neurons number must be positive")
-        if encoding_dims is not None and encoding_dims != len(encoding_dims):
-            raise ValueError("encoding_dims length must be equal to n_encoding_layers")
-        if encoding_dims is not None and encoding_dims[0] != input_neurons:
-            raise ValueError("encoding_dims first element must be equal to input neurons")
-        if unit_type not in _UNIT_TYPES:
-            raise ValueError("unit_type must be either: " + str(_UNIT_TYPES.values()))
-        if not 0 <= recurrent_dropout < 1:
-            raise ValueError("recurrent_dropout must be between 0 and 1 (excluded)")
-        if not 0 <= dropout < 1:
-            raise ValueError("dropout must be between 0 and 1 (excluded)")
-        if timesteps is None:
-            raise ValueError("timesteps must be specified")
-        if n_features is None:
-            raise ValueError("n_features must be specified")
-
-        # Reference to the layer class (not instance)
-        self._model_class_constructor = _UNIT_TYPES[unit_type]
-        # Input shape of the first layer
-        input_shape = (timesteps, n_features)
-
-        # If dims are None generate them
-        if encoding_dims is None:
-            encoding_dims = []
-            n_units = input_neurons
-            for i in range(0, n_encoding_layers):
-                encoding_dims.append(n_units)
-                n_units = int(n_units / 2)
-
-        # Adding the other layers specified in encoding_dims list. Last layer has return_sequences parameters set to
-        # false in order to have a vector of features to pass to the Repeat Vector layer
-        for i, n_units in enumerate(encoding_dims):
-            # If sequential_bottleneck is true then last layer must give a feature vector as output so it doesn't have 
-            # to return the entire sequence
-            if i == n_encoding_layers - 1 and sequential_bottleneck:
-                return_sequences = False
-            # Adding first layer, input_shape must be specified in this layer
-            if i == 0:
-                self.add(self._model_class_constructor(
-                    units=input_neurons,
-                    activation=activation,
-                    input_shape=input_shape,
-                    return_sequences=return_sequences,
-                    recurrent_activation=recurrent_activation,
-                    use_bias=True,
-                    kernel_initializer=kernel_initializer,
-                    recurrent_initializer=recurrent_initializer,
-                    bias_initializer=bias_initializer,
-                    kernel_regularizer=kernel_regularizer,
-                    recurrent_regularizer=recurrent_regularizer,
-                    bias_regularizer=bias_regularizer,
-                    activity_regularizer=activity_regularizer,
-                    kernel_constraint=kernel_constraint,
-                    recurrent_constraint=recurrent_constraint,
-                    bias_constraint=bias_constraint,
-                    dropout=dropout,
-                    recurrent_dropout=recurrent_dropout,
-                    return_state=return_state,
-                    go_backwards=go_backwards,
-                    stateful=stateful,
-                    time_major=time_major
-                )
-                )
-            # otherwise it's an inner encoder layer without input_shape parameter
-            else:
-                self.add(self._model_class_constructor(
-                    units=n_units,
-                    activation=activation,
-                    return_sequences=return_sequences,
-                    recurrent_activation=recurrent_activation,
-                    use_bias=True,
-                    kernel_initializer=kernel_initializer,
-                    recurrent_initializer=recurrent_initializer,
-                    bias_initializer=bias_initializer,
-                    kernel_regularizer=kernel_regularizer,
-                    recurrent_regularizer=recurrent_regularizer,
-                    bias_regularizer=bias_regularizer,
-                    activity_regularizer=activity_regularizer,
-                    kernel_constraint=kernel_constraint,
-                    recurrent_constraint=recurrent_constraint,
-                    bias_constraint=bias_constraint,
-                    dropout=dropout,
-                    recurrent_dropout=recurrent_dropout,
-                    return_state=return_state,
-                    go_backwards=go_backwards,
-                    stateful=stateful,
-                    time_major=time_major
-                )
-                )
-        # Reversing layer dimensionality list to build the decoder specular to the encoder
-        encoding_dims.reverse()
-        # Adding the Repeat Vector layer. It transforms a (None, n_feature) shape into a (None, timesteps, n_features)
-        if sequential_bottleneck:
-            self.add(RepeatVector(timesteps))
-        # Adding the decoders layer in reversed order of the encoder
-        for n_units in encoding_dims:
-            self.add(self._model_class_constructor(
-                units=n_units,
-                activation=activation,
-                return_sequences=True,
-                recurrent_activation=recurrent_activation,
-                use_bias=True,
-                kernel_initializer=kernel_initializer,
-                recurrent_initializer=recurrent_initializer,
-                bias_initializer=bias_initializer,
-                kernel_regularizer=kernel_regularizer,
-                recurrent_regularizer=recurrent_regularizer,
-                bias_regularizer=bias_regularizer,
-                activity_regularizer=activity_regularizer,
-                kernel_constraint=kernel_constraint,
-                recurrent_constraint=recurrent_constraint,
-                bias_constraint=bias_constraint,
-                dropout=dropout,
-                recurrent_dropout=recurrent_dropout,
-                return_state=return_state,
-                go_backwards=go_backwards,
-                stateful=stateful,
-                time_major=time_major
-            )
-            )
-        # Adding last layer that has the same size as the input of the network
-        self.add(TimeDistributed(Dense(n_features)))
-'''
