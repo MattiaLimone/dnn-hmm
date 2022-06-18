@@ -38,9 +38,10 @@ def main():
         conv_filters=conv_filters,
         conv_kernels_size=conv_kernels_size,
         conv_strides=conv_strides,
-        latent_space_dim=1024,
+        latent_space_dim=64,
         conv_pools=conv_pools,
-        dropout_dense=0.5
+        dropout_dense=0.5,
+        add_last_dense_block=False
     )
 
     # model.build()
