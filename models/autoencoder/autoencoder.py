@@ -148,7 +148,6 @@ class AutoEncoder(keras.models.Model):
         super(AutoEncoder, self).__init__()
         self._encoder = Sequential(name=ENCODER_MODEL_NAME)
         self._decoder = Sequential(name=DECODER_MODEL_NAME)
-        self._latent_space_dim = bottleneck.units  # number of features in latent space
         self._input_shape = input_shape
 
         # If autoencoder must be symmetrical
@@ -201,6 +200,7 @@ class AutoEncoder(keras.models.Model):
 
         # Compute encoder output shape and decoder (temporary) output shape (batch_size, other dimensions...)
         encoder_output_shape = self._encoder.compute_output_shape(input_shape)
+        self._latent_space_dim = encoder_output_shape[-1]  # number of features in latent space
         decoder_output_shape = self._decoder.compute_output_shape(encoder_output_shape)
 
         if add_last_dense_block:
@@ -219,7 +219,7 @@ class AutoEncoder(keras.models.Model):
 
                 # Add time distributed dense output layer
                 self._decoder.add(
-                    TimeDistributed(Dense(flattened_input_shape, activation=last_layer_activation, name="output_dense"))
+                    TimeDistributed(Dense(flattened_input_shape, activation=last_layer_activation), name="output_dense")
                 )
 
                 # Reshape output to correct tensor shape (batch_size, timesteps, other dimensions...)
