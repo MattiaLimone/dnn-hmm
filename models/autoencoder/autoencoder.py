@@ -64,13 +64,13 @@ class FlattenDenseLayer(Layer):
 
     def call(self, inputs, *args, **kwargs):
         """
-        Calls the model on new inputs and returns the outputs as tensors, encoding the input tensor in the latent space
-        and trying to reconstruct the input it from this latent representation.
+        Calls the model on new inputs and returns the outputs as tensors, flattening the input tensors on a single
+        dimension, and passing them to the dense layer.
 
         :param inputs: Input tensor, or dict/list/tuple of input tensors.
         :param args: Additional positional arguments. May contain tensors, although this is not recommended.
         :param kwargs: Additional keyword arguments. May contain tensors, although this is not recommended.
-        :return: A tensor or list/tuple of tensors.
+        :return: A tensor or list/tuple of tensors containing the flattened inputs passed through a dense layer.
         """
         flattened = self._flatten_layer(inputs)
         dense_output = self._dense(flattened)
@@ -94,7 +94,7 @@ class FlattenDenseLayer(Layer):
         """
         Computes the output shape of the layer.
 
-        :param input_shape: hape tuple (tuple of integers) or list of shape tuples (one per output tensor of the layer).
+        :param input_shape: shape tuple (tuple of integers) or list of shape tuples (one per output tensor of the layer).
             Shape tuples can include None for free dimensions, instead of an integer.
         :return: An input shape tuple.
         """
@@ -104,7 +104,7 @@ class FlattenDenseLayer(Layer):
     @property
     def units(self) -> int:
         """
-        Return the units number of the dense layer
+        Returns the units number of the dense layer
 
         :return: An integer representing the number of units of the dense layer
         """
@@ -148,7 +148,6 @@ class AutoEncoder(keras.models.Model):
         super(AutoEncoder, self).__init__()
         self._encoder = Sequential(name=ENCODER_MODEL_NAME)
         self._decoder = Sequential(name=DECODER_MODEL_NAME)
-        self._latent_space_dim = bottleneck.units  # number of features in latent space
         self._input_shape = input_shape
 
         # If autoencoder must be symmetrical
@@ -201,6 +200,7 @@ class AutoEncoder(keras.models.Model):
 
         # Compute encoder output shape and decoder (temporary) output shape (batch_size, other dimensions...)
         encoder_output_shape = self._encoder.compute_output_shape(input_shape)
+        self._latent_space_dim = bottleneck.units  # number of features in latent space
         decoder_output_shape = self._decoder.compute_output_shape(encoder_output_shape)
 
         if add_last_dense_block:
@@ -219,7 +219,7 @@ class AutoEncoder(keras.models.Model):
 
                 # Add time distributed dense output layer
                 self._decoder.add(
-                    TimeDistributed(Dense(flattened_input_shape, activation=last_layer_activation, name="output_dense"))
+                    TimeDistributed(Dense(flattened_input_shape, activation=last_layer_activation), name="output_dense")
                 )
 
                 # Reshape output to correct tensor shape (batch_size, timesteps, other dimensions...)
