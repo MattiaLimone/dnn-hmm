@@ -1,8 +1,6 @@
 from typing import Iterable, final, Optional, Union
-from keras import Sequential
 from autoencoder import AutoEncoder
 from keras.layers import GRU, LSTM, RepeatVector, Layer
-from keras.losses import MSE
 
 
 class LSTMRepeatVector(Layer):
@@ -432,15 +430,15 @@ class RecurrentAutoEncoder(AutoEncoder):
             raise ValueError('Invalid value for argument `unit_types`. Expected a strictly positive value. '
                              f'Received unit_types={unit_types}.')
         if not recurrent_units and len(recurrent_units) <= 0:
-            raise ValueError('Invalid value for argument `conv_kernels_size`. Expected a strictly positive value. '
-                             f'Received conv_kernels_size={recurrent_units}.')
+            raise ValueError('Invalid value for argument `recurrent_units`. Expected a strictly positive value. '
+                             f'Received recurrent_units={recurrent_units}.')
         if not latent_space_dim and latent_space_dim <= 0:
             raise ValueError('Invalid value for argument `latent_space_dim`. Expected a strictly positive value. '
                              f'Received latent_space_dim={latent_space_dim}.')
         if len(recurrent_units) != len(unit_types):
             raise ValueError('Invalid value for argument `unit_types` or `recurrent_units`. Same dimension expected.'
-                             f'\nReceived conv_filters dimension={len(unit_types)}.'
-                             f'\nReceived conv_kernels_size dimension={len(recurrent_units)}.')
+                             f'\nReceived len(unit_types)={len(unit_types)}.'
+                             f'\nReceived len(recurrent_units)={len(recurrent_units)}.')
 
         # Setup instance variables
         self._unit_types = unit_types
@@ -479,7 +477,12 @@ class RecurrentAutoEncoder(AutoEncoder):
             bottleneck_recurrent_activation,
             timesteps
         )
-        decoder_layers = self._build_decoder_layers()
+        decoder_layers = self._build_decoder_layers(
+            latent_space_dim,
+            bottleneck_unit_type,
+            bottleneck_activation,
+            bottleneck_recurrent_activation
+        )
 
         super(RecurrentAutoEncoder, self).__init__(
             input_shape=input_shape,
@@ -553,7 +556,7 @@ class RecurrentAutoEncoder(AutoEncoder):
                 kernel_initializer=self._kernel_initializer,
                 kernel_regularizer=self._kernel_regularizer,
                 bias_initializer=self._bias_initializer,
-                bias_regularizer=self.bias_regularizer,
+                bias_regularizer=self._bias_regularizer,
                 activity_regularizer=self._activity_regularizer,
                 recurrent_initializer=self._recurrent_initializer,
                 recurrent_regularizer=self._recurrent_regularizer,
@@ -587,20 +590,40 @@ class RecurrentAutoEncoder(AutoEncoder):
 
         return bottleneck
 
-    def _build_decoder_layers(self) -> list[Union[LSTM, GRU]]:
+    def _build_decoder_layers(self, latent_space_dim: int, bottleneck_unit_type: str, bottleneck_activation: str,
+                              bottleneck_recurrent_activation: str) -> list[Union[LSTM, GRU]]:
         """
         Build the decoder block, usually symmetrical to the encoder.
 
-        :return: list of created LSTM or GRU decoder blocks
+        :param latent_space_dim: An integer. Dimensionality of the bottleneck.
+        :param bottleneck_unit_type: A string. Either "LSTM" or "GRU" to chose the type of layer of the bottleneck.
+        :param bottleneck_activation: Activation function used in bottleneck. If you don't specify anything, no
+            activation is applied.
+        :param bottleneck_recurrent_activation: Activation function to used in the bottleneck for the recurrent step.
+
+        :return: list of created LSTM or GRU decoder blocks.
         """
         decoder_layers: list[Union[LSTM, GRU]] = []
+        constructor = _UNIT_TYPES[bottleneck_unit_type]
 
-        '''
-        # If bottleneck doesn't return sequences, add a RepeatVector layer prior to the decoder
-        if not self._bottleneck_returns_sequences:
-            repeat_vector = RepeatVector(timesteps)
-            decoder_layers.append(repeat_vector)
-        '''
+        bottleneck_mirror = constructor(
+            name=f"decoder_{bottleneck_unit_type.lower()}{1}",
+            units=latent_space_dim,
+            activation=bottleneck_activation,
+            recurrent_activation=bottleneck_recurrent_activation,
+            kernel_initializer=self._kernel_initializer,
+            kernel_regularizer=self._kernel_regularizer,
+            bias_initializer=self._bias_initializer,
+            bias_regularizer=self._bias_regularizer,
+            activity_regularizer=self._activity_regularizer,
+            recurrent_initializer=self._recurrent_initializer,
+            recurrent_regularizer=self._recurrent_regularizer,
+            dropout=self._recurrent_units_dropout,
+            recurrent_dropout=self._recurrent_dropout,
+            return_sequences=True,
+            go_backwards=self._go_backwards
+        )
+        decoder_layers.append(bottleneck_mirror)
 
         for layer_index in reversed(range(len(self._unit_types))):
 
@@ -612,7 +635,7 @@ class RecurrentAutoEncoder(AutoEncoder):
 
             # Construct either LSTM or GRU
             recurrent_layer = constructor(
-                name=f"decoder_{unit_type.lower()}{len(self._unit_types) - layer_index}",
+                name=f"decoder_{unit_type.lower()}{len(self._unit_types) - layer_index + 1}",
                 units=units,
                 activation=activation,
                 recurrent_activation=recurrent_activation,
