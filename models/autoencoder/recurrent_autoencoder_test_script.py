@@ -1,4 +1,5 @@
 from models.autoencoder.recurrent_autoencoder import RecurrentAutoEncoder
+from keras import regularizers
 
 
 def main():
@@ -23,9 +24,10 @@ def main():
         latent_space_dim=latent_space_dim,
         bottleneck_unit_type=bottleneck_unit_type,
         bottleneck_activation=bottleneck_activation,
+        bottleneck_activity_regularizer=regularizers.l1(1e-4),
         recurrent_units_dropout=recurrent_units_dropout,
         recurrent_dropout=recurrent_dropout,
-        bottleneck_returns_sequences=False,
+        bottleneck_returns_sequences=True,
         do_batch_norm=True
     )
 
