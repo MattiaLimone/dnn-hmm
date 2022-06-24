@@ -1,6 +1,7 @@
 from typing import Iterable, final, Optional, Union
 from autoencoder import AutoEncoder
 from keras.layers import GRU, LSTM, RepeatVector, Layer
+from keras import regularizers
 
 
 class LSTMRepeatVector(Layer):
@@ -378,10 +379,10 @@ class RecurrentAutoEncoder(AutoEncoder):
                  recurrent_activations: Optional[Union[str, list[str]]] = 'sigmoid',
                  bottleneck_unit_type: str = "LSTM", bottleneck_returns_sequences: bool = False,
                  bottleneck_activation: str = 'relu', bottleneck_recurrent_activation: str = 'sigmoid',
-                 recurrent_units_dropout: float = 0.0, recurrent_dropout: float = 0.0,
-                 recurrent_initializer: str = 'glorot_uniform', kernel_initializer: str = 'orthogonal',
-                 bias_initializer: str = 'zeros', recurrent_regularizer=None, kernel_regularizer=None,
-                 bias_regularizer=None, activity_regularizer=None, go_backwards: bool = False,
+                 bottleneck_activity_regularizer=None, recurrent_units_dropout: float = 0.0,
+                 recurrent_dropout: float = 0.0, recurrent_initializer: str = 'glorot_uniform',
+                 kernel_initializer: str = 'orthogonal', bias_initializer: str = 'zeros', recurrent_regularizer=None,
+                 kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, go_backwards: bool = False,
                  do_batch_norm: bool = True):
         """
         Constructor. Most of the parameters used in keras LSTM/GRU layers can be passed to this method.
@@ -401,6 +402,8 @@ class RecurrentAutoEncoder(AutoEncoder):
         :param bottleneck_activation: a string indicating the activations functions to use in bottleneck layer output.
             Default: ReLU (relu). If None is given, no activation is applied to the corresponding layer (ie. "linear"
             activation: a(x) = x).
+        :param bottleneck_activity_regularizer: activity regularizer for the bottleneck layer. Useful to make the
+            autoencoder sparse (by default, no regularizer is used).
         :param recurrent_activations: a string indicating the activations functions to use in bottleneck layer output.
             Default: ReLU (relu). If None is given, no activation is applied to the corresponding layer (ie. "linear"
             activation: a(x) = x).
@@ -475,6 +478,7 @@ class RecurrentAutoEncoder(AutoEncoder):
             bottleneck_unit_type,
             bottleneck_activation,
             bottleneck_recurrent_activation,
+            bottleneck_activity_regularizer,
             timesteps
         )
         decoder_layers = self._build_decoder_layers(
@@ -532,7 +536,7 @@ class RecurrentAutoEncoder(AutoEncoder):
         return encoder_layers
 
     def _build_bottleneck(self, latent_space_dim: int, unit_type: str, activation: str, recurrent_activation: str,
-                          timesteps: int) -> Union[LSTM, GRU]:
+                          bottleneck_activity_regularizer, timesteps: int) -> Union[LSTM, GRU]:
         """
         Build the bottleneck layer that consist of a LSTM or a GRU layer
 
@@ -540,6 +544,8 @@ class RecurrentAutoEncoder(AutoEncoder):
         :param unit_type: A string. Either "LSTM" or "GRU" to chose the type of layer
         :param activation: Activation function to use. If you don't specify anything, no activation is applied.
         :param recurrent_activation: Activation function to use for the recurrent step.
+        :param bottleneck_activity_regularizer: activity regularizer for the bottleneck layer. Useful to make the
+            autoencoder sparse.
         :param timesteps: number of timesteps.
         :return: created LSTM or GRU bottleneck layer.
         """
@@ -557,7 +563,7 @@ class RecurrentAutoEncoder(AutoEncoder):
                 kernel_regularizer=self._kernel_regularizer,
                 bias_initializer=self._bias_initializer,
                 bias_regularizer=self._bias_regularizer,
-                activity_regularizer=self._activity_regularizer,
+                activity_regularizer=bottleneck_activity_regularizer,
                 recurrent_initializer=self._recurrent_initializer,
                 recurrent_regularizer=self._recurrent_regularizer,
                 dropout=self._recurrent_units_dropout,
@@ -580,7 +586,7 @@ class RecurrentAutoEncoder(AutoEncoder):
                 kernel_regularizer=self._kernel_regularizer,
                 bias_initializer=self._bias_initializer,
                 bias_regularizer=self._bias_regularizer,
-                activity_regularizer=self._activity_regularizer,
+                activity_regularizer=bottleneck_activity_regularizer,
                 recurrent_initializer=self._recurrent_initializer,
                 recurrent_regularizer=self._recurrent_regularizer,
                 dropout=self._recurrent_units_dropout,

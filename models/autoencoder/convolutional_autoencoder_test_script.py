@@ -1,5 +1,3 @@
-from keras.layers import Conv1D
-from keras.layers import MaxPooling1D, UpSampling1D
 from models.autoencoder.convolutional_autoencoder import Convolutional1DAutoEncoder
 
 '''
@@ -40,8 +38,7 @@ def main():
         conv_strides=conv_strides,
         latent_space_dim=64,
         conv_pools=conv_pools,
-        dropout_dense=0.5,
-        add_last_dense_block=False
+        dropout_dense=0.5
     )
 
     # model.build()
