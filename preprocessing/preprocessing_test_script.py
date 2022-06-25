@@ -277,7 +277,7 @@ def _one_hot_encode_state_labels(speakers_raw_state_labels: dict, speaker_indexe
                 # Set the corresponding component of the one-hot encode label vector to 1
                 speaker_one_hot_encoded_state_labels[frame_index, state_index] = 1
 
-            # Convert the generated one-hot encoded state labels matrix to sparse csr format and store it in the list
+            # Convert the generated one-hot encoded state labels matrix to sparse lil format and store it in the list
             speaker_one_hot_encoded_state_labels = sp.lil_matrix(speaker_one_hot_encoded_state_labels)
             one_hot_encoded_state_labels.append(speaker_one_hot_encoded_state_labels)
 
