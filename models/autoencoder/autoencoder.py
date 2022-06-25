@@ -1,6 +1,5 @@
 import numpy as np
-from keras.models import Sequential
-import keras
+from keras.models import Sequential, Model
 from keras.layers import Dense, TimeDistributed, Layer, InputLayer, BatchNormalization, Flatten, Dropout, Reshape
 from typing import final, Optional, Union, Any, Iterable
 
@@ -111,7 +110,7 @@ class FlattenDenseLayer(Layer):
         return self._dense.units
 
 
-class AutoEncoder(keras.models.Model):
+class AutoEncoder(Model):
     """
     This class represents a generic autoencoder model, that can be constructed with any keras layer.
     """

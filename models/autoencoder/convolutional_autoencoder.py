@@ -24,7 +24,7 @@ class Convolutional1DAutoEncoder(AutoEncoder):
         it, if input shape is given.
 
         :param input_shape: A tuple/list of integer. The shape format of the input.
-        :param conv_filters: Integer, the dimensionality of the output space
+        :param conv_filters: Integer, the dimensionality of the output space for each layer.
         :param conv_kernels_size: An integer or tuple/list of a single integer, specifying the length of the 1D
             convolution window.
         :param conv_strides: An integer or tuple/list of a single integer, specifying the stride length of the
