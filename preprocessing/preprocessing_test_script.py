@@ -94,7 +94,7 @@ def _speakers_audios_mfccs_lpccs_mel_spectrograms_max_frames(speakers_audios_nam
     max_frames_lpcc = 0
     max_frames_mel = 0
 
-    # For each speaker, extract MFCCs and LPCCs and search for max frame number
+    # For each speaker
     for speaker in tqdm(speakers_audios_names, desc="Extracting MFCCs, LPCCs, Mel Spectrogram, Max Frame: "):
 
         if speaker not in speaker_audios_mfccs:
@@ -106,6 +106,7 @@ def _speakers_audios_mfccs_lpccs_mel_spectrograms_max_frames(speakers_audios_nam
         if speaker not in speaker_audios_mel_spectrogram:
             speaker_audios_mel_spectrogram[speaker] = []
 
+        # Extract MFCCs and LPCCs and search for max frame number
         for audio_path in tqdm(speakers_audios_names[speaker], desc=f"Extracting audios for speaker: {speaker}"):
             silence_cleaned_audio, sr = utl.remove_silence(audio_path)
 
@@ -138,7 +139,7 @@ def _speakers_audios_mfccs_lpccs_mel_spectrograms_max_frames(speakers_audios_nam
 def _fill_speakers_audios_features(speaker_audio_features: dict, max_frames: int, feature_num: int = 0,
                                    mode: int = 0) -> dict:
     """
-     Fills each given audio frame array of the inout dictionary either with 0s or repeating the frames circularly.
+     Fills each given audio frame array of the input dictionary either with 0s or repeating the frames circularly.
 
     :param speaker_audio_features: A dictionary of speaker-MFCCs/LPCCs pairs
     :param max_frames: An integer. The target length to normalize each audio
@@ -159,6 +160,7 @@ def _fill_speakers_audios_features(speaker_audio_features: dict, max_frames: int
         mode_string = "repeating frames in a circular fashion"
     desc = f"Filling audio {mode_string} with max_frames: {max_frames}, feature_num: {feature_num}"
 
+    # For each speaker
     for speaker in tqdm(speaker_audio_features, desc=desc):
         # If given feature_num is 0, infer feature number by looking at the first audio frame length
         if feature_num == 0:
@@ -328,7 +330,7 @@ def main():
         audio_file_regex=_AUDIO_REGEX
     )
 
-    # Generate the speaker indexes to grant the speakers are always processed in the same order (or load it if saved)
+    # Generate the speaker indexes to ensure the speakers are always processed in the same order (or load it if saved)
     speaker_indexes = _generate_or_load_speaker_ordered_dict(list(speakers_audios_names.keys()), generate=True)
 
     # Get max frame len, audio mel-scaled spectrograms, audio MFCCs and LPCCs for each speaker

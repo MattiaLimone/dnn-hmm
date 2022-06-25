@@ -99,9 +99,9 @@ def gmm_hmm_grid_search(X: np.ndarray, sequence_lengths: np.ndarray = None, min_
 def generate_acoustic_model(X: np.ndarray, label: Union[str, Union[int, float, np.number]], n_states: int = N_STATES,
                             n_mix: int = N_MIX) -> (GMMHMM, list):
     """
-    Fits an acoustic GMM-HMM model on the given audio, which gives a statistical representation of the speaker's audios.
-    MFCCs that can be used in speaker identification context.
-    :param X: A Numpy Array. The concatenated array of the MFCCs extracted by all speaker's audio frames.
+    Fits an acoustic GMM-HMM model on the given audio, which gives a statistical representation of the speaker's audios
+    features that can be used in speaker identification context.
+    :param X: A Numpy Array containing the audio features extracted by all speaker's audio frames.
     :param label: A string or numeric used as label for the model, corresponding to the class being represented.
     :param n_states: An integer. The number of HMM model states.
     :param n_mix: An integer. The number of GMM mixtures for each HMM state.
@@ -114,7 +114,6 @@ def generate_acoustic_model(X: np.ndarray, label: Union[str, Union[int, float, n
     if n_mix < 0:
         raise ValueError("The number of Gaussian mixtures  must be positive.")
 
-    # X = X.astype(np.longfloat)
     # Train the GMM-HMM model on the given audios
     model = GMMHMM(label=label, n_states=n_states, n_components=n_mix, covariance_type='diag', topology='ergodic')
     model.set_random_initial()
