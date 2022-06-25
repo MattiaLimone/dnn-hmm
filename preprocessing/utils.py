@@ -66,7 +66,7 @@ def speaker_audio_filenames(path: str, speaker_dir_regex: re.Pattern, audio_file
         dict[str, list[str]]:
     """
     This function will iterate recursively over the dataset directory, processing each speaker directory whose name
-    whose name matches the given speaker_dir_regex, and storing each audio file that matches the given audio_file_regex
+    matches the given speaker_dir_regex, and storing each audio file that matches the given audio_file_regex
     into a dictionary composed of speaker:path_to_audio_files pairs.
 
     :param path: A string representing the path to the dataset root folder.
