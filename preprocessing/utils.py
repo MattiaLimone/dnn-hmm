@@ -23,52 +23,6 @@ def remove_silence(path: str) -> (np.ndarray, int):
 
     # Read the Audiofile
     data, sr = sf.read(path)
-
-    '''    
-    # Name extraction from path
-    filename = os.path.basename(path)
-
-    # Dirname extraction
-    tmp_export_dir = os.path.dirname(path) + "/" + _TMP_DIR_NAME
-   
-    if export_path is not None:
-        # Check if export path exist
-        if not os.path.exists(export_path):
-            # Create a new directory because it does not exist
-            os.makedirs(export_path)
-
-        # Save temporary file wav with rfidd
-        sf.write(export_path + filename, data, sr)
-        data_as = AudioSegment.from_wav(export_path + filename)
-
-    else:
-        # Create temporary directory to contain temporary wav
-        os.makedirs(tmp_export_dir)
-
-        # Save temporary file wav with rfidd and read it with pydub
-        sf.write(tmp_export_dir + "/" + filename, data, sr)
-        data_as = AudioSegment.from_wav(tmp_export_dir + "/" + filename)
-
-    # Detect silence intervals where silence last 500ms and dB range reduction is higher than 16dB
-    silence_ranges = silence.detect_silence(
-        data_as,
-        min_silence_len=MINIMUM_SILENCE_LENGTH,
-        silence_thresh=SILENCE_THRESHOLD,
-        seek_step=SEEK_STEP
-    )
-    # Generate indexes of silence interval
-    indexes = []
-    for silence_range in silence_ranges:
-        indexes = [*indexes, *range(silence_range[0], silence_range[1] + 1)]
-    # Delete silence interval
-    data = np.delete(data, indexes, axis=0)
-    # Save wav file
-    if export_path is not None:
-        sf.write(export_path + filename, data, sr)
-    else:
-        # Delete temporary directory
-        shutil.rmtree(tmp_export_dir)
-    '''
     energy, vad, data = preprocessing.remove_silence(sig=data, fs=sr, threshold=SILENCE_THRESHOLD)
 
     return data, sr
@@ -99,7 +53,7 @@ def fill_audio_frames(audio_frames: np.ndarray, target_len: int, mode: int = 0) 
     while added_frames < dist:
         if mode == 0:
             fill_frame = np.zeros(shape=(1, frame_len))
-        if mode == 1:
+        elif mode == 1:
             fill_frame = np.reshape(np.array(audio_frames[added_frames % len(audio_frames)]), newshape=(1, frame_len))
 
         target_audio = np.concatenate((target_audio, fill_frame), axis=0)
@@ -136,8 +90,8 @@ def _speakers_audios_filenames_rec(path: str, speakers_audios: dict[str, list[st
                                    audio_file_regex: re.Pattern, visited: Optional[set] = None):
     """
     This function will iterate recursively over the dataset directory, processing each speaker directory whose name
-    whose name matches the given speaker_dir_regex, and storing each audio file that matches the given audio_file_regex
-    into a dictionary composed of speaker:path_to_audio_files pairs.
+    matches the given speaker_dir_regex, and storing each audio file that matches the given audio_file_regex into a
+    dictionary composed of speaker:path_to_audio_files pairs.
 
     :param path: A string representing the path to the dataset root folder.
     :param speakers_audios: an empty dictionary in which all speaker-path_to_audio_file pairs will be stored
