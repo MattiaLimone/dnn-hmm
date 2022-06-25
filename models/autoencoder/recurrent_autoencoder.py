@@ -1,7 +1,6 @@
 from typing import Iterable, final, Optional, Union
 from autoencoder import AutoEncoder
 from keras.layers import GRU, LSTM, RepeatVector, Layer
-from keras import regularizers
 
 
 class LSTMRepeatVector(Layer):
@@ -599,7 +598,7 @@ class RecurrentAutoEncoder(AutoEncoder):
     def _build_decoder_layers(self, latent_space_dim: int, bottleneck_unit_type: str, bottleneck_activation: str,
                               bottleneck_recurrent_activation: str) -> list[Union[LSTM, GRU]]:
         """
-        Build the decoder block, usually symmetrical to the encoder.
+        Build the recurrent decoder block.
 
         :param latent_space_dim: An integer. Dimensionality of the bottleneck.
         :param bottleneck_unit_type: A string. Either "LSTM" or "GRU" to chose the type of layer of the bottleneck.
