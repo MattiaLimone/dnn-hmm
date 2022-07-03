@@ -3,6 +3,7 @@ import keras
 import numpy as np
 
 
+# TODO: add class documentation
 class DNNHMM(object):
     def __init__(self, transitions: np.ndarray, emission_model: keras.Model,
                  state_frequencies: np.ndarray, priors: np.ndarray = None):

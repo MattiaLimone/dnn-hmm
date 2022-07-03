@@ -20,7 +20,7 @@ class RecConv1DSiameseNet(Model):
                  input_shape_conv_branch: tuple[Optional[int], int, ...], tail_dense_units: int, output_dim: int,
                  tail_dense_activation='relu', timesteps_repeat_vector_conv_branch: Optional[int] = None):
 
-        # TODO: add checks to the input shape of each branch (for example, rec branch inputs must be at least 3D
+        # TODO: add checks to the input shape of each branch (for example, rec branch inputs must be at least 3D)
         super().__init__()
 
         # Set instance variables
