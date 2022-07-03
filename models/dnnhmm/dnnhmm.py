@@ -38,7 +38,7 @@ class DNNHMM(object):
 
         # Observation prior is allotted to be a constant value since all observations are assumed to be independent
         n_obs = len(y)
-        observation_prior = 1 / len(y)
+        observation_prior = 1 / n_obs
         observation_index = 0
         observations_likelihood = np.zeros(shape=(self.__n_states, n_obs))
 
