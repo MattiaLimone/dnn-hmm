@@ -90,7 +90,7 @@ class LSTMRepeatVector(Layer):
         repeat_vector_name: a string (default None) representing the name of the RepeatVector part of the layer.
 
         Call arguments:
-        inputs: A 3D tensor.
+        inputs: a 3D tensor.
         mask: Binary tensor of shape `(samples, timesteps)` indicating whether
           a given timestep should be masked. An individual `True` entry indicates
           that the corresponding timestep should be utilized, while a `False`
@@ -138,7 +138,7 @@ class LSTMRepeatVector(Layer):
         :param inputs: Input tensor, or dict/list/tuple of input tensors.
         :param args: Additional positional arguments. May contain tensors, although this is not recommended.
         :param kwargs: Additional keyword arguments. May contain tensors, although this is not recommended.
-        :return: A tensor or list/tuple of tensors containing the output of the LSTM cell repeated n times.
+        :return: a tensor or list/tuple of tensors containing the output of the LSTM cell repeated n times.
         """
         lstm_output = self.__lstm(inputs)
         repeat_vector_output = self.__repeat_vector(lstm_output)
@@ -269,7 +269,7 @@ class GRURepeatVector(Layer):
           repeat_vector_name: a string (default None) representing the name of the RepeatVector part of the layer.
 
         Call arguments:
-          inputs: A 3D tensor.
+          inputs: a 3D tensor.
           mask: Binary tensor of shape `(samples, timesteps)` indicating whether
             a given timestep should be masked. An individual `True` entry indicates
             that the corresponding timestep should be utilized, while a `False`
@@ -318,7 +318,7 @@ class GRURepeatVector(Layer):
         :param inputs: Input tensor, or dict/list/tuple of input tensors.
         :param args: Additional positional arguments. May contain tensors, although this is not recommended.
         :param kwargs: Additional keyword arguments. May contain tensors, although this is not recommended.
-        :return: A tensor or list/tuple of tensors containing the output of the GRU cell repeated n times.
+        :return: a tensor or list/tuple of tensors containing the output of the GRU cell repeated n times.
         """
         gru_output = self.__gru(inputs)
         repeat_vector_output = self.__repeat_vector(gru_output)
@@ -540,7 +540,7 @@ class RecurrentAutoEncoder(AutoEncoder):
         Build the bottleneck layer that consist of a LSTM or a GRU layer
 
         :param latent_space_dim: An integer. Dimensionality of the bottleneck.
-        :param unit_type: A string. Either "LSTM" or "GRU" to chose the type of layer
+        :param unit_type: a string. Either "LSTM" or "GRU" to chose the type of layer
         :param activation: Activation function to use. If you don't specify anything, no activation is applied.
         :param recurrent_activation: Activation function to use for the recurrent step.
         :param bottleneck_activity_regularizer: activity regularizer for the bottleneck layer. Useful to make the
@@ -601,7 +601,7 @@ class RecurrentAutoEncoder(AutoEncoder):
         Build the recurrent decoder block.
 
         :param latent_space_dim: An integer. Dimensionality of the bottleneck.
-        :param bottleneck_unit_type: A string. Either "LSTM" or "GRU" to chose the type of layer of the bottleneck.
+        :param bottleneck_unit_type: a string. Either "LSTM" or "GRU" to chose the type of layer of the bottleneck.
         :param bottleneck_activation: Activation function used in bottleneck. If you don't specify anything, no
             activation is applied.
         :param bottleneck_recurrent_activation: Activation function to used in the bottleneck for the recurrent step.

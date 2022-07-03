@@ -23,7 +23,7 @@ class Convolutional1DAutoEncoder(AutoEncoder):
         Constructor. Instantiates a new convolutional autoencoder with the given encoder and decoder layers and builds
         it, if input shape is given.
 
-        :param input_shape: A tuple/list of integer. The shape format of the input.
+        :param input_shape: a tuple/list of integer. The shape format of the input.
         :param conv_filters: Integer, the dimensionality of the output space for each layer.
         :param conv_kernels_size: An integer or tuple/list of a single integer, specifying the length of the 1D
             convolution window.
@@ -34,11 +34,11 @@ class Convolutional1DAutoEncoder(AutoEncoder):
             layers.
         :param dropout_conv: Float between 0 and 1. Fraction of the input units to drop after Convolutional Layer.
         :param dropout_dense: Float between 0 and 1. Fraction of the input units to drop after Dense Layer.
-        :param pool_type: A string. Either AVG_POOL" or MAX_POOL to use an Average Pooling layer or a Max Pooling
+        :param pool_type: a string. Either AVG_POOL" or MAX_POOL to use an Average Pooling layer or a Max Pooling
             layer.
         :param activation: Activation function to use. If you don't specify anything, no activation is applied.
         :param do_batch_norm: whether or not to add a batch normalization layer before the output layer of the decoder.
-        :param ignore_first_convolutional_decoder: A boolean. If true first convolutional layer of the encoder will not
+        :param ignore_first_convolutional_decoder: a boolean. If true first convolutional layer of the encoder will not
             be added to the decoder as a deconvolutional layer.
         """
         if not input_shape and input_shape[-1] < 1:
@@ -188,7 +188,7 @@ class Convolutional1DAutoEncoder(AutoEncoder):
         Build the decoder layers, which consists of the symmetrical architecture of the decoder.
 
         :param conv_output_shape: final output shape of the bottleneck layer.
-        :param ignore_first_convolutional_decoder: A boolean. If true first layer of decoder will not be added to the
+        :param ignore_first_convolutional_decoder: a boolean. If true first layer of decoder will not be added to the
             model.
         :return: created DecoderLayer with given output shape
         """
@@ -219,7 +219,7 @@ class Convolutional1DAutoEncoder(AutoEncoder):
         """
         Build the upsampling layers of the decoder to reconstruct the input in the decoder layer.
 
-        :param ignore_first_convolutional_decoder: A boolean. If true first layer of decoder will not be added to the
+        :param ignore_first_convolutional_decoder: a boolean. If true first layer of decoder will not be added to the
             model.
         :return: created transpose block for each convolutional layer
         """
