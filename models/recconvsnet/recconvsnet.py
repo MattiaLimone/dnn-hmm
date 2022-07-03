@@ -15,19 +15,27 @@ class RecConv1DSiameseNet(Model):
 
     def __init__(self,
                  rec_branch_layers: list[RNN, BatchNormalization, RepeatVector, LayerNormalization, Layer],
-                 conv_branch_layers: list[Conv1D, BatchNormalization, LayerNormalization, Layer, Pooling1D],
+                 conv_branch_layers: list[Conv1D, BatchNormalization, LayerNormalization, Pooling1D, Layer],
                  input_shape_rec_branch: tuple[Optional[int], int, ...],
-                 input_shape_conv_branch: tuple[Optional[int], int, ...],
-                 tail_dense_units: int, output_dim: int, tail_dense_activation='relu',
-                 timesteps_repeat_vector_conv_branch: Optional[int] = None):
+                 input_shape_conv_branch: tuple[Optional[int], int, ...], tail_dense_units: int, output_dim: int,
+                 tail_dense_activation='relu', timesteps_repeat_vector_conv_branch: Optional[int] = None):
+
         # TODO: add checks to the input shape of each branch (for example, rec branch inputs must be at least 3D
         super().__init__()
+
+        # Set instance variables
         self.__input_shape_rec_branch = input_shape_rec_branch
         self.__input_shape_conv_branch = input_shape_conv_branch
 
+        # Build recurrent branch
         self.__recurrent_branch = self._build_recurrent_branch(rec_branch_layers)
+
+        # Build convolutional branch
         self.__conv_branch = self._build_conv_branch(conv_branch_layers, timesteps_repeat_vector_conv_branch)
+
+        # Build tail
         self.__tail = self._build_tail(tail_dense_units, tail_dense_activation, output_dim)
+
         # Build the model
         self.build(input_shape=[input_shape_rec_branch, input_shape_conv_branch])
 

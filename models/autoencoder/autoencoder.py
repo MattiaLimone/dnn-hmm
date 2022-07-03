@@ -24,12 +24,12 @@ class FlattenDenseLayer(Layer):
         Constructor. Instantiates a Flatten layer followed by a Dense layer that represents the bottleneck.
 
         :param output_dim: An integer. Dimension of the output.
-        :param flatten_data_format: A string, one of channels_last (default) or channels_first. The ordering of the
+        :param flatten_data_format: a string, one of channels_last (default) or channels_first. The ordering of the
             dimensions in the inputs. channels_last corresponds to inputs with shape (batch, ..., channels) while
             channels_first corresponds to inputs with shape (batch, channels, ...). It defaults to the image_data_format
             value found in your Keras config file at ~/.keras/keras.json. If you never set it, then it will be
             "channels_last".
-        :param name: A string. The name of the layer.
+        :param name: a string. The name of the layer.
         :param activation: Activation function to use. If you don't specify anything, no activation is applied.
         :param use_bias: Boolean, whether the layer uses a bias vector.
         :param kernel_initializer: Initializer for the kernel weights matrix.
@@ -69,7 +69,7 @@ class FlattenDenseLayer(Layer):
         :param inputs: Input tensor, or dict/list/tuple of input tensors.
         :param args: Additional positional arguments. May contain tensors, although this is not recommended.
         :param kwargs: Additional keyword arguments. May contain tensors, although this is not recommended.
-        :return: A tensor or list/tuple of tensors containing the flattened inputs passed through a dense layer.
+        :return: a tensor or list/tuple of tensors containing the flattened inputs passed through a dense layer.
         """
         flattened = self._flatten_layer(inputs)
         dense_output = self._dense(flattened)
@@ -254,7 +254,7 @@ class AutoEncoder(Model):
         :param inputs: input tensor, or dict/list/tuple of input tensors.
         :param training: boolean or boolean scalar tensor, indicating whether to run the autoencoder in training mode
                          or inference mode.
-        :param mask: a mask or list of masks. A mask can be either a boolean tensor or None (no mask).
+        :param mask: a mask or list of masks. a mask can be either a boolean tensor or None (no mask).
                      For more details, check the guide
                      [here](https://www.tensorflow.org/guide/keras/masking_and_padding).
         :return: tensor representing the reconstructed input.
@@ -281,25 +281,25 @@ class AutoEncoder(Model):
 
     Args:
         x: Input data. It could be:
-          - A Numpy array (or array-like), or a list of arrays
+          - a Numpy array (or array-like), or a list of arrays
             (in case the model has multiple inputs).
-          - A TensorFlow tensor, or a list of tensors
+          - a TensorFlow tensor, or a list of tensors
             (in case the model has multiple inputs).
-          - A dict mapping input names to the corresponding array/tensors,
+          - a dict mapping input names to the corresponding array/tensors,
             if the model has named inputs.
-          - A `tf.data` dataset. Should return a tuple
+          - a `tf.data` dataset. Should return a tuple
             of either `(inputs, targets)` or
             `(inputs, targets, sample_weights)`.
-          - A generator or `keras.utils.Sequence` returning `(inputs, targets)`
+          - a generator or `keras.utils.Sequence` returning `(inputs, targets)`
             or `(inputs, targets, sample_weights)`.
-          - A `tf.keras.utils.experimental.DatasetCreator`, which wraps a
+          - a `tf.keras.utils.experimental.DatasetCreator`, which wraps a
             callable that takes a single argument of type
             `tf.distribute.InputContext`, and returns a `tf.data.Dataset`.
             `DatasetCreator` should be used when users prefer to specify the
             per-replica batching and sharding logic for the `Dataset`.
             See `tf.keras.utils.experimental.DatasetCreator` doc for more
             information.
-          A more detailed description of unpacking behavior for iterator types
+          a more detailed description of unpacking behavior for iterator types
           (Dataset, generator, Sequence) is given below. If using
           `tf.distribute.experimental.ParameterServerStrategy`, only
           `DatasetCreator` type is supported for `x`.
@@ -358,10 +358,10 @@ class AutoEncoder(Model):
             noise and dropout.
             `validation_data` will override `validation_split`.
             `validation_data` could be:
-              - A tuple `(x_val, y_val)` of Numpy arrays or tensors.
-              - A tuple `(x_val, y_val, val_sample_weights)` of NumPy arrays.
-              - A `tf.data.Dataset`.
-              - A Python generator or `keras.utils.Sequence` returning
+              - a tuple `(x_val, y_val)` of Numpy arrays or tensors.
+              - a tuple `(x_val, y_val, val_sample_weights)` of NumPy arrays.
+              - a `tf.data.Dataset`.
+              - a Python generator or `keras.utils.Sequence` returning
               `(inputs, targets)` or `(inputs, targets, sample_weights)`.
             `validation_data` is not yet supported with
             `tf.distribute.experimental.ParameterServerStrategy`.
@@ -445,7 +445,7 @@ class AutoEncoder(Model):
             the generator as they can't be passed easily to children processes.
 
     Unpacking behavior for iterator-like inputs:
-        A common pattern is to pass a tf.data.Dataset, generator, or
+        a common pattern is to pass a tf.data.Dataset, generator, or
       tf.keras.utils.Sequence to the `x` argument of fit, which will in fact
       yield not only features (x) but optionally targets (y) and sample weights.
       Keras requires that the output of such iterator-likes be unambiguous. The
@@ -456,7 +456,7 @@ class AutoEncoder(Model):
       should still adhere to the top-level tuple structure.
       e.g. `({"x0": x0, "x1": x1}, y)`. Keras will not attempt to separate
       features, targets, and weights from the keys of a single dict.
-        A notable unsupported data type is the namedtuple. The reason is that
+        a notable unsupported data type is the namedtuple. The reason is that
       it behaves like both an ordered datatype (tuple) and a mapping
       datatype (dict). So given a namedtuple of the form:
           `namedtuple("example_tuple", ["y", "x"])`
@@ -469,7 +469,7 @@ class AutoEncoder(Model):
       encounters a namedtuple. (Along with instructions to remedy the issue.)
 
     Returns:
-        A `History` object. Its `History.history` attribute is
+        a `History` object. Its `History.history` attribute is
         a record of training loss values and metrics values
         at successive epochs, as well as validation loss values
         and validation metrics values (if applicable).
