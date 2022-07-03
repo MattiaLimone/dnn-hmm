@@ -5,14 +5,71 @@ import numpy as np
 
 # TODO: add class documentation
 class DNNHMM(object):
-    def __init__(self, transitions: np.ndarray, emission_model: keras.Model,
-                 state_frequencies: np.ndarray, priors: np.ndarray = None):
-        # TODO: add checks
-        self.__n_states = priors.shape[0]
+    """
+    This class represents a DNN-HMM model e.g. an HMM whose observation emission probabilities P(x | s) (where x is the
+     observation and s is the state) are defined by a neural network model.
+    """
+
+    def __init__(self, transitions: np.ndarray, emission_model: keras.Model, state_frequencies: np.ndarray,
+                 priors: Optional[np.ndarray] = None):
+        """
+        Constructor. Instantiates a DNN-HMM model starting from transition probabilities, prior probabilities and state
+        frequencies.
+        :param transitions: transition probability matrix from each state to each state; shape: (n_states, n_states).
+        :param emission_model: built and trained emission model to approximate state posterior distribution P(s | x),
+            where s is the state and x is the observation.
+        :param state_frequencies: approximation of the state distribution P(s), for s = 1, 2, ..., n_states; shape
+            (n_states, ).
+        :param priors: prior probability distribution of each state P(s_0 = s), for s = 1, 2, ..., n_states; shape
+            (n_states, ).
+        :raise ValueError if any given shape is incorrect, if any of the given transition matrix row doesn't sum up to
+            1, if state_frequencies elements don't sum up to 1 or priors doesn't sum up to 1.
+        """
+        self.__n_states = transitions.shape[0]
+
+        # Validate transition matrix
+        self._validate_transition_matrix(transitions)
+
+        # Validate priors
+        if priors is not None:
+            self._validate_priors(priors)
+
+        # Validate state frequencies
+        self._validate_state_frequencies(state_frequencies)
+
+        # Validate emission model
+        self._validate_emission_model(emission_model)
+
+        # Setup instance variables
         self.__transitions = transitions
         self.__priors = priors if priors is not None else np.full(self.__n_states, 1 / self.__n_states)
         self.__emission_model = emission_model
         self.__state_frequencies = state_frequencies
+
+    @property
+    def n_states(self) -> int:
+        return self.__n_states
+
+    @property
+    def transitions(self) -> np.ndarray:
+        return self.__transitions
+
+    @transitions.setter
+    def transitions(self, transitions: np.ndarray):
+        # Validate transition matrix
+        self._validate_transition_matrix(transitions)
+        self.__n_states = transitions.shape[0]
+        self.__transitions = transitions
+
+    @property
+    def priors(self) -> np.ndarray:
+        return self.__priors
+
+    @priors.setter
+    def priors(self, priors: np.ndarray):
+        # Validate priors
+        self._validate_priors(priors)
+        self.__priors = priors
 
     @property
     def state_frequencies(self) -> np.ndarray:
@@ -20,8 +77,39 @@ class DNNHMM(object):
 
     @state_frequencies.setter
     def state_frequencies(self, state_frequencies: np.ndarray):
-        # TODO: add checks about state frequencies (e.g. sum exactly to 1)
+        # Validate state frequencies
+        self._validate_state_frequencies(state_frequencies)
         self.__state_frequencies = state_frequencies
+
+    def _validate_transition_matrix(self, transitions: np.ndarray):
+
+        if self.__n_states != transitions.shape[1] or transitions.ndim != 2:
+            raise ValueError("Transition matrix must have shape (n_states, n_states)")
+
+        # Check if each transition matrix sum up to 1 (since they are probabilities of transition out of a state)
+        for i in range(0, transitions.shape[0]):
+            if sum(transitions[i, :]) != 1:
+                raise ValueError("Each transition matrix row must sum up to 1")
+
+    def _validate_state_frequencies(self, state_frequencies: np.ndarray):
+        if state_frequencies.shape != (self.__n_states, ):
+            raise ValueError("State frequencies array must have shape (n_states, )")
+
+        # Check if frequencies sum up to 1 (since they are estimates of the probabilities of each state)
+        if np.sum(state_frequencies) != 1:
+            raise ValueError("State frequencies array must sum up to 1")
+
+    def _validate_priors(self, priors: np.ndarray):
+        if priors.shape != (self.__n_states, ):
+            raise ValueError("State prior probabilities array must have shape (n_states, )")
+
+        # Check if priors sum up to 1 (since they are estimates of the probabilities of each state)
+        if np.sum(priors) != 1:
+            raise ValueError("State prior probabilities array must sum up to 1")
+
+    def _validate_emission_model(self, emission_model: keras.Model):
+        # TODO: implement emission_model checks
+        pass
 
     def _compute_emission_matrix(self, y, state_range) -> np.ndarray:
 
@@ -37,27 +125,19 @@ class DNNHMM(object):
         # Get posterior probabilities for each observation of the sequence
         posteriors_sequence = self.__emission_model(y).numpy()[:, state_range[0]:state_range[1]]
 
-        # Observation prior is allotted to be a constant value since all observations are assumed to be independent
+        # Observation prior is allotted to be a constant value since all observations are assumed to be independent, and
+        # thus it can be ignored
         n_obs = len(y)
-        observation_prior = 1 / n_obs
+        # observation_prior = 1 / n_obs  # Maybe this should be ignored totally
         observation_index = 0
         observations_likelihood = np.zeros(shape=(self.__n_states, n_obs))
 
         # For each observation
         for posterior in posteriors_sequence:
 
-            # Convert the posterior into likelihood
-            likelihood = (posterior * observation_prior) / self.__state_frequencies
-
-            '''
-            # Convert likelihood to log-likelihood, guarding against log(0) if some posterior equals to 0
-            log_likelihood = np.zeros(len(posterior))
-            log_likelihood = np.log(
-                likelihood,
-                out=log_likelihood,
-                where=[False if x == 0 else True for x in likelihood]
-            )
-            '''
+            # Convert the posterior into likelihood (observation prior can be ignored since it's constant)
+            # likelihood = (posterior * observation_prior) / self.__state_frequencies
+            likelihood = posterior / self.__state_frequencies
 
             # Add the obtained likelihood to the result matrix
             observations_likelihood[:, observation_index] = likelihood
@@ -126,4 +206,3 @@ class DNNHMM(object):
             most_likely_path[i - 1] = t2[most_likely_path[i], i]
 
         return most_likely_path, t1, t2
-
