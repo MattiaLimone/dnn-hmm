@@ -41,6 +41,7 @@ def main():
         dropout_dense=0.5
     )
 
+    model.compile(optimizer='adam', loss='mse')
     # model.build()
     model.summary()
 
