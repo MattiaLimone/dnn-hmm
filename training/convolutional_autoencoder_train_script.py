@@ -1,12 +1,6 @@
-from keras.layers import Conv1D
-from keras.layers import MaxPooling1D, UpSampling1D
 from models.autoencoder.convolutional_autoencoder import Convolutional1DAutoEncoder
 from keras.optimizer_v2.gradient_descent import SGD
-from keras.callbacks import Callback, ModelCheckpoint
 import matplotlib.pyplot as pyplot
-import tensorflow as tf
-import numpy as np
-import pandas as pd
 from training_utils import load_dataset, TRAIN_SET_PATH_MEL_SPEC, TEST_SET_PATH_MEL_SPEC, EarlyStoppingByLossVal
 
 
