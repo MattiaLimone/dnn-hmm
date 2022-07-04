@@ -1,3 +1,5 @@
+from keras.callbacks import ModelCheckpoint, EarlyStopping
+
 from models.autoencoder.convolutional_autoencoder import Convolutional1DAutoEncoder
 from keras.optimizer_v2.gradient_descent import SGD
 import matplotlib.pyplot as pyplot
@@ -30,7 +32,7 @@ def main():
     )
     loss = 'mae'
     callbacks = [
-        EarlyStoppingByLossVal(monitor='val_loss', value=0.1, verbose=1),
+        EarlyStopping(monitor='loss', patience=10, min_delta=0.001, restore_best_weights=True)
     ]
     version = 1.1  # For easy saving of multiple model versions
 
