@@ -1,4 +1,6 @@
 from typing import final
+
+from keras.callbacks import EarlyStopping
 from keras.optimizer_v2.adadelta import Adadelta
 from matplotlib import pyplot
 from models.autoencoder.recurrent_autoencoder import RecurrentAutoEncoder
@@ -37,7 +39,7 @@ def main():
     )
     loss = 'mae'
     callbacks = [
-        EarlyStoppingByLossVal(monitor='val_loss', value=0.001, verbose=1),
+        EarlyStopping(monitor='loss', patience=10, min_delta=0.001, restore_best_weights=True)
     ]
     version = 1.0  # For easy saving of multiple model versions
 

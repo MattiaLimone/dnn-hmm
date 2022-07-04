@@ -1,6 +1,7 @@
 from typing import final
 import keras.models
 import keras.losses
+from keras.callbacks import EarlyStopping
 from keras.optimizer_v2.adadelta import Adadelta
 from matplotlib import pyplot
 from models.recconvsnet.recconvsnet import RecConv1DSiameseNet
@@ -54,7 +55,9 @@ def main():
         epsilon=1e-7,
         name='adadelta_optimizer'
     )
-    callbacks = None  # This can be replaced with custom early stopping callbacks
+    callbacks = [
+        EarlyStopping(monitor='val_loss', patience=10, min_delta=0.001, restore_best_weights=True)
+    ]  # This can be replaced with custom early stopping callbacks
     version = 0.1  # For easy saving of multiple model versions
 
     # Instantiate the model and compile it
