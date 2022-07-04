@@ -6,10 +6,8 @@ from tqdm.auto import tqdm
 from preprocessing.constants import TRAIN_PERCENTAGE
 
 
-N_COMPONENTS: final = 2
-N_MIX: final = 2
-N_ITER: final = 10
-N_STATES: final = 5
+N_STATES_DEFAULT: final = 5
+N_MIX_DEFAULT: final = 2
 
 
 def gmm_hmm_grid_search(X: np.ndarray, sequence_lengths: np.ndarray = None, min_state_number: int = 1,
@@ -78,8 +76,8 @@ def gmm_hmm_grid_search(X: np.ndarray, sequence_lengths: np.ndarray = None, min_
     return best_model_grid, best_model_params, best_model_score
 
 
-def generate_acoustic_model(X: np.ndarray, label: Union[str, Union[int, float, np.number]], n_states: int = N_STATES,
-                            n_mix: int = N_MIX) -> (GMMHMM, list):
+def generate_acoustic_model(X: np.ndarray, label: Union[str, Union[int, float, np.number]], n_states: int = N_STATES_DEFAULT,
+                            n_mix: int = N_MIX_DEFAULT) -> (GMMHMM, list):
     """
     Fits an acoustic GMM-HMM model on the given audio, which gives a statistical representation of the speaker's audios
     features that can be used in speaker identification context.
