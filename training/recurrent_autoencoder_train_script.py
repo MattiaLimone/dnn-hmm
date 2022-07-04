@@ -74,8 +74,8 @@ def main():
     pyplot.legend()
     pyplot.show()
 
-    # Save the encoder to file
-    model.save(f'data/fitted_autoencoder/autoencoder_lstm5_{epochs}_epochs_v{version}')
+    # Save the autoencoder to file
+    model.save(f'data/fitted_autoencoder/lstm/autoencoder_lstm_{epochs}_epochs_v{version}')
 
 
 if __name__ == "__main__":

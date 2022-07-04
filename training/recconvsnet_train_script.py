@@ -11,8 +11,10 @@ from training.training_utils import TRAIN_SET_PATH_MFCCS, TEST_SET_PATH_MFCCS, T
 
 _EPOCHS_LOAD_CONV: final = 1050
 _EPOCHS_LOAD_REC: final = 750
-_CONV_AUTOENCODER_PATH: final = f"fitted_autoencoder/cnn/autoencoder_cnn_{_EPOCHS_LOAD_CONV}_epochs"
-_REC_AUTOENCODER_PATH: final = f"fitted_autoencoder/lstm/autoecoder_lstm_{_EPOCHS_LOAD_REC}_epochs"
+_VERSION_LOAD_CONV: final = 1.1
+_VERSION_LOAD_REC: final = 1.0
+_CONV_AUTOENC_PATH: final = f"fitted_autoencoder/cnn/autoencoder_cnn_{_EPOCHS_LOAD_CONV}_epochs_v{_VERSION_LOAD_CONV}"
+_REC_AUTOENC_PATH: final = f"fitted_autoencoder/lstm/autoecoder_lstm_{_EPOCHS_LOAD_REC}_epochs_v{_VERSION_LOAD_REC}"
 
 
 def main():
@@ -24,8 +26,8 @@ def main():
     total_state_number = get_label_number(train_mfccs_labels)
 
     # Load saved models
-    conv_autoencoder = keras.models.load_model(_CONV_AUTOENCODER_PATH)
-    rec_autoencoder = keras.models.load_model(_REC_AUTOENCODER_PATH)
+    conv_autoencoder = keras.models.load_model(_CONV_AUTOENC_PATH)
+    rec_autoencoder = keras.models.load_model(_REC_AUTOENC_PATH)
 
     # Get input shapes
     input_shape_conv_branch = conv_autoencoder.input_shape
