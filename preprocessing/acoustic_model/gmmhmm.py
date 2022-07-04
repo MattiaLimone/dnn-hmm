@@ -1,10 +1,11 @@
-from typing import final, Union
+import pickle
+from typing import final
 import numpy as np
-from sequentia.classifiers.hmm import GMMHMM
+from sequentia.classifiers import GMMHMM
 from tqdm.auto import tqdm
 from preprocessing.utils import TRAIN_PERCENTAGE
 
-N_STATES: final = 2
+N_COMPONENTS: final = 2
 N_MIX: final = 2
 N_ITER: final = 10
 
@@ -96,36 +97,78 @@ def gmm_hmm_grid_search(X: np.ndarray, sequence_lengths: np.ndarray = None, min_
     return best_model_grid, best_model_params, best_model_score
 
 
-def generate_acoustic_model(X: np.ndarray, label: Union[str, Union[int, float, np.number]], n_states: int = N_STATES,
-                            n_mix: int = N_MIX) -> (GMMHMM, list):
+def generate_acoustic_model(X: np.ndarray, label: str, n_components: int = N_COMPONENTS,
+                            n_mix: int = N_MIX, n_iter: int = N_ITER) -> (GMMHMM, list):
     """
     Fits an acoustic GMM-HMM model on the given audio, which gives a statistical representation of the speaker's audios
-    features that can be used in speaker identification context.
-    :param X: A Numpy Array containing the audio features extracted by all speaker's audio frames.
-    :param label: A string or numeric used as label for the model, corresponding to the class being represented.
-    :param n_states: An integer. The number of HMM model states.
-    :param n_mix: An integer. The number of GMM mixtures for each HMM state.
+    MFCCs that can be used in speaker identification context.
+
+    :param X: A Numpy Array. The concatenated array of the MFCCs extracted by all speaker's audio frames
+    :param sequence_lengths: A Numpy Array. The array containing the frame number of each audio in X
+    :param n_components: An integer. The number of HMM model states
+    :param n_mix: An integer. The number of GMM mixtures for each HMM state
+    :param n_iter: An integer. The max number of iterations of the EM algorithm used to train GMM-HMM model
     :return: trained GMM-HMM model representing the speaker's audio, a list containing the viterbi-calculated most
              likely state sequence for each audio x in X (i.e. GMM-HMM state sequence y that maximizes P(y | x))
              audio in X.
     """
-    if n_states < 0:
+    if n_components < 0:
         raise ValueError("Components number must be positive.")
     if n_mix < 0:
         raise ValueError("The number of Gaussian mixtures  must be positive.")
+    if n_iter < 0:
+        raise ValueError("The number of iterations must be positive.")
 
+    # print(sequence_lengths)
+    X = X.astype(np.longfloat)
     # Train the GMM-HMM model on the given audios
-    model = GMMHMM(label=label, n_states=n_states, n_components=n_mix, covariance_type='diag', topology='ergodic')
+    model = GMMHMM(label=label, n_states=n_components, n_components=n_mix, covariance_type='diag', topology='ergodic')
     model.set_random_initial()
     model.set_random_transitions()
+    # model.transmat_ = np.array([1/n_components for _ in range(n_components)])
+    # model.startprob_ = np.array([1/n_components for _ in range(n_components)])
+
     model.fit(list(X))
 
     audios_states = []
+    sequence_start = 0
 
+    """
     # For each audio, apply the viterbi algorithm to get the most likely state sequence and add it to the return list
+    for sequence_length in sequence_lengths:
+        sequence_end = sequence_length + sequence_start
+        audio = X[sequence_start:sequence_end]
+        log_prob, audio_states = model.model.decode(audio, algorithm='viterbi')
+        audios_states.append(audio_states)
+        sequence_start = sequence_end
+    """
+
     for i in range(0, X.shape[0]):
         audio = X[i]
         log_prob, audio_states = model.model.decode(audio, algorithm='viterbi')
         audios_states.append(audio_states)
 
     return model, audios_states
+
+
+def save_acoustic_model(model: GMMHMM, path: str):
+    """
+    This function take an acoustic model and a path as input and save the given
+    GMMHMM model into the given path.
+    :param model: GMMHMM model to save
+    :param path: path where GMMHMM model will be saved
+    """
+    with open(path, "wb") as file:
+        pickle.dump(model, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def load_acoustic_model(path: str) -> GMMHMM:
+    """
+    This function takes in input a path and return the GMMHMM
+     acoustic model saved from this path
+    :param path: path of the acoustic model
+    :return: GMMHMM acoustic model
+    """
+    with open(path, "rb") as file:
+        acoustic_model = pickle.load(file)
+        return acoustic_model
