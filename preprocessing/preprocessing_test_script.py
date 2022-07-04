@@ -221,7 +221,7 @@ def _generate_speakers_acoustic_model(speakers_audios_features: dict, n_states: 
             n_mix=n_mix
         )
 
-        path = ACOUSTIC_MODEL_PATH + speaker
+        path = f"{ACOUSTIC_MODEL_PATH}{speaker}.pkl"
         save_acoustic_model(acoustic_models[speaker], path)
 
     return acoustic_models, acoustic_model_state_labels

@@ -1,3 +1,4 @@
+import pickle
 from typing import final
 import numpy as np
 from sequentia.classifiers import GMMHMM
@@ -121,7 +122,7 @@ def generate_acoustic_model(X: np.ndarray, label: str, n_components: int = N_COM
     # print(sequence_lengths)
     X = X.astype(np.longfloat)
     # Train the GMM-HMM model on the given audios
-    model = GMMHMM(label=label, n_states= n_components, n_components=n_mix, covariance_type='diag', topology='ergodic')
+    model = GMMHMM(label=label, n_states=n_components, n_components=n_mix, covariance_type='diag', topology='ergodic')
     model.set_random_initial()
     model.set_random_transitions()
     # model.transmat_ = np.array([1/n_components for _ in range(n_components)])
@@ -148,3 +149,26 @@ def generate_acoustic_model(X: np.ndarray, label: str, n_components: int = N_COM
         audios_states.append(audio_states)
 
     return model, audios_states
+
+
+def save_acoustic_model(model: GMMHMM, path: str):
+    """
+    This function take an acoustic model and a path as input and save the given
+    GMMHMM model into the given path.
+    :param model: GMMHMM model to save
+    :param path: path where GMMHMM model will be saved
+    """
+    with open(path, "wb") as file:
+        pickle.dump(model, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def load_acoustic_model(path: str) -> GMMHMM:
+    """
+    This function takes in input a path and return the GMMHMM
+     acoustic model saved from this path
+    :param path: path of the acoustic model
+    :return: GMMHMM acoustic model
+    """
+    with open(path, "rb") as file:
+        acoustic_model = pickle.load(file)
+        return acoustic_model
