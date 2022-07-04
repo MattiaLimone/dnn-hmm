@@ -90,7 +90,7 @@ class LSTMRepeatVector(Layer):
         repeat_vector_name: a string (default None) representing the name of the RepeatVector part of the layer.
 
         Call arguments:
-        inputs: A 3D tensor.
+        inputs: a 3D tensor.
         mask: Binary tensor of shape `(samples, timesteps)` indicating whether
           a given timestep should be masked. An individual `True` entry indicates
           that the corresponding timestep should be utilized, while a `False`
@@ -138,7 +138,7 @@ class LSTMRepeatVector(Layer):
         :param inputs: Input tensor, or dict/list/tuple of input tensors.
         :param args: Additional positional arguments. May contain tensors, although this is not recommended.
         :param kwargs: Additional keyword arguments. May contain tensors, although this is not recommended.
-        :return: A tensor or list/tuple of tensors containing the output of the LSTM cell repeated n times.
+        :return: a tensor or list/tuple of tensors containing the output of the LSTM cell repeated n times.
         """
         lstm_output = self.__lstm(inputs)
         repeat_vector_output = self.__repeat_vector(lstm_output)
@@ -269,7 +269,7 @@ class GRURepeatVector(Layer):
           repeat_vector_name: a string (default None) representing the name of the RepeatVector part of the layer.
 
         Call arguments:
-          inputs: A 3D tensor.
+          inputs: a 3D tensor.
           mask: Binary tensor of shape `(samples, timesteps)` indicating whether
             a given timestep should be masked. An individual `True` entry indicates
             that the corresponding timestep should be utilized, while a `False`
@@ -318,7 +318,7 @@ class GRURepeatVector(Layer):
         :param inputs: Input tensor, or dict/list/tuple of input tensors.
         :param args: Additional positional arguments. May contain tensors, although this is not recommended.
         :param kwargs: Additional keyword arguments. May contain tensors, although this is not recommended.
-        :return: A tensor or list/tuple of tensors containing the output of the GRU cell repeated n times.
+        :return: a tensor or list/tuple of tensors containing the output of the GRU cell repeated n times.
         """
         gru_output = self.__gru(inputs)
         repeat_vector_output = self.__repeat_vector(gru_output)
@@ -378,10 +378,10 @@ class RecurrentAutoEncoder(AutoEncoder):
                  recurrent_activations: Optional[Union[str, list[str]]] = 'sigmoid',
                  bottleneck_unit_type: str = "LSTM", bottleneck_returns_sequences: bool = False,
                  bottleneck_activation: str = 'relu', bottleneck_recurrent_activation: str = 'sigmoid',
-                 recurrent_units_dropout: float = 0.0, recurrent_dropout: float = 0.0,
-                 recurrent_initializer: str = 'glorot_uniform', kernel_initializer: str = 'orthogonal',
-                 bias_initializer: str = 'zeros', recurrent_regularizer=None, kernel_regularizer=None,
-                 bias_regularizer=None, activity_regularizer=None, go_backwards: bool = False,
+                 bottleneck_activity_regularizer=None, recurrent_units_dropout: float = 0.0,
+                 recurrent_dropout: float = 0.0, recurrent_initializer: str = 'glorot_uniform',
+                 kernel_initializer: str = 'orthogonal', bias_initializer: str = 'zeros', recurrent_regularizer=None,
+                 kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, go_backwards: bool = False,
                  do_batch_norm: bool = True):
         """
         Constructor. Most of the parameters used in keras LSTM/GRU layers can be passed to this method.
@@ -401,6 +401,8 @@ class RecurrentAutoEncoder(AutoEncoder):
         :param bottleneck_activation: a string indicating the activations functions to use in bottleneck layer output.
             Default: ReLU (relu). If None is given, no activation is applied to the corresponding layer (ie. "linear"
             activation: a(x) = x).
+        :param bottleneck_activity_regularizer: activity regularizer for the bottleneck layer. Useful to make the
+            autoencoder sparse (by default, no regularizer is used).
         :param recurrent_activations: a string indicating the activations functions to use in bottleneck layer output.
             Default: ReLU (relu). If None is given, no activation is applied to the corresponding layer (ie. "linear"
             activation: a(x) = x).
@@ -475,6 +477,7 @@ class RecurrentAutoEncoder(AutoEncoder):
             bottleneck_unit_type,
             bottleneck_activation,
             bottleneck_recurrent_activation,
+            bottleneck_activity_regularizer,
             timesteps
         )
         decoder_layers = self._build_decoder_layers(
@@ -532,14 +535,16 @@ class RecurrentAutoEncoder(AutoEncoder):
         return encoder_layers
 
     def _build_bottleneck(self, latent_space_dim: int, unit_type: str, activation: str, recurrent_activation: str,
-                          timesteps: int) -> Union[LSTM, GRU]:
+                          bottleneck_activity_regularizer, timesteps: int) -> Union[LSTM, GRU]:
         """
         Build the bottleneck layer that consist of a LSTM or a GRU layer
 
         :param latent_space_dim: An integer. Dimensionality of the bottleneck.
-        :param unit_type: A string. Either "LSTM" or "GRU" to chose the type of layer
+        :param unit_type: a string. Either "LSTM" or "GRU" to chose the type of layer
         :param activation: Activation function to use. If you don't specify anything, no activation is applied.
         :param recurrent_activation: Activation function to use for the recurrent step.
+        :param bottleneck_activity_regularizer: activity regularizer for the bottleneck layer. Useful to make the
+            autoencoder sparse.
         :param timesteps: number of timesteps.
         :return: created LSTM or GRU bottleneck layer.
         """
@@ -557,7 +562,7 @@ class RecurrentAutoEncoder(AutoEncoder):
                 kernel_regularizer=self._kernel_regularizer,
                 bias_initializer=self._bias_initializer,
                 bias_regularizer=self._bias_regularizer,
-                activity_regularizer=self._activity_regularizer,
+                activity_regularizer=bottleneck_activity_regularizer,
                 recurrent_initializer=self._recurrent_initializer,
                 recurrent_regularizer=self._recurrent_regularizer,
                 dropout=self._recurrent_units_dropout,
@@ -580,7 +585,7 @@ class RecurrentAutoEncoder(AutoEncoder):
                 kernel_regularizer=self._kernel_regularizer,
                 bias_initializer=self._bias_initializer,
                 bias_regularizer=self._bias_regularizer,
-                activity_regularizer=self._activity_regularizer,
+                activity_regularizer=bottleneck_activity_regularizer,
                 recurrent_initializer=self._recurrent_initializer,
                 recurrent_regularizer=self._recurrent_regularizer,
                 dropout=self._recurrent_units_dropout,
@@ -593,10 +598,10 @@ class RecurrentAutoEncoder(AutoEncoder):
     def _build_decoder_layers(self, latent_space_dim: int, bottleneck_unit_type: str, bottleneck_activation: str,
                               bottleneck_recurrent_activation: str) -> list[Union[LSTM, GRU]]:
         """
-        Build the decoder block, usually symmetrical to the encoder.
+        Build the recurrent decoder block.
 
         :param latent_space_dim: An integer. Dimensionality of the bottleneck.
-        :param bottleneck_unit_type: A string. Either "LSTM" or "GRU" to chose the type of layer of the bottleneck.
+        :param bottleneck_unit_type: a string. Either "LSTM" or "GRU" to chose the type of layer of the bottleneck.
         :param bottleneck_activation: Activation function used in bottleneck. If you don't specify anything, no
             activation is applied.
         :param bottleneck_recurrent_activation: Activation function to used in the bottleneck for the recurrent step.

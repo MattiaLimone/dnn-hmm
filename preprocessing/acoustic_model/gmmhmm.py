@@ -1,12 +1,15 @@
+import pickle
 from typing import final, Union
 import numpy as np
-from sequentia.classifiers.hmm import GMMHMM
+from sequentia.classifiers import GMMHMM
 from tqdm.auto import tqdm
-from preprocessing.utils import TRAIN_PERCENTAGE
+from preprocessing.constants import TRAIN_PERCENTAGE
 
-N_STATES: final = 2
+
+N_COMPONENTS: final = 2
 N_MIX: final = 2
 N_ITER: final = 10
+N_STATES: final = 5
 
 
 def gmm_hmm_grid_search(X: np.ndarray, sequence_lengths: np.ndarray = None, min_state_number: int = 1,
@@ -99,9 +102,9 @@ def gmm_hmm_grid_search(X: np.ndarray, sequence_lengths: np.ndarray = None, min_
 def generate_acoustic_model(X: np.ndarray, label: Union[str, Union[int, float, np.number]], n_states: int = N_STATES,
                             n_mix: int = N_MIX) -> (GMMHMM, list):
     """
-    Fits an acoustic GMM-HMM model on the given audio, which gives a statistical representation of the speaker's audios.
-    MFCCs that can be used in speaker identification context.
-    :param X: A Numpy Array. The concatenated array of the MFCCs extracted by all speaker's audio frames.
+    Fits an acoustic GMM-HMM model on the given audio, which gives a statistical representation of the speaker's audios
+    features that can be used in speaker identification context.
+    :param X: A Numpy Array containing the audio features extracted by all speaker's audio frames.
     :param label: A string or numeric used as label for the model, corresponding to the class being represented.
     :param n_states: An integer. The number of HMM model states.
     :param n_mix: An integer. The number of GMM mixtures for each HMM state.
@@ -114,7 +117,6 @@ def generate_acoustic_model(X: np.ndarray, label: Union[str, Union[int, float, n
     if n_mix < 0:
         raise ValueError("The number of Gaussian mixtures  must be positive.")
 
-    # X = X.astype(np.longfloat)
     # Train the GMM-HMM model on the given audios
     model = GMMHMM(label=label, n_states=n_states, n_components=n_mix, covariance_type='diag', topology='ergodic')
     model.set_random_initial()
@@ -130,3 +132,26 @@ def generate_acoustic_model(X: np.ndarray, label: Union[str, Union[int, float, n
         audios_states.append(audio_states)
 
     return model, audios_states
+
+
+def save_acoustic_model(model: GMMHMM, path: str):
+    """
+    This function take an acoustic model and a path as input and save the given
+    GMMHMM model into the given path.
+    :param model: GMMHMM model to save
+    :param path: path where GMMHMM model will be saved
+    """
+    with open(path, "wb") as file:
+        pickle.dump(model, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def load_acoustic_model(path: str) -> GMMHMM:
+    """
+    This function takes in input a path and return the GMMHMM
+     acoustic model saved from this path
+    :param path: path of the acoustic model
+    :return: GMMHMM acoustic model
+    """
+    with open(path, "rb") as file:
+        acoustic_model = pickle.load(file)
+        return acoustic_model
