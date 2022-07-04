@@ -1,15 +1,9 @@
-from typing import final
 import numpy as np
 import pandas as pd
 from keras.callbacks import Callback
 from scipy import sparse as sp
-from preprocessing.preprocessing_test_script import AUDIO_DATAFRAME_KEY, STATE_PROB_KEY
-
-
-TRAIN_SET_PATH_MFCCS: final = f"data/cleaned/train/mfccs_filled_circular_train.pkl"
-TEST_SET_PATH_MFCCS: final = f"data/cleaned/train/mfccs_filled_circular_test.pkl"
-TRAIN_SET_PATH_MEL_SPEC: final = f"data/cleaned/train/mel_spectr_filled_circular_train.pkl"
-TEST_SET_PATH_MEL_SPEC: final = f"data/cleaned/train/mel_spectr_filled_circular_test.pkl"
+from preprocessing.constants import AUDIO_DATAFRAME_KEY, STATE_PROB_KEY, TRAIN_SET_PATH_MFCCS, \
+    TRAIN_SET_PATH_MEL_SPEC, TEST_SET_PATH_MFCCS, TEST_SET_PATH_MEL_SPEC
 
 
 def pandas_object_to_numpy_array(pandas_object) -> np.ndarray:
