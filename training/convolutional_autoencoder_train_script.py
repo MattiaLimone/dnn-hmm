@@ -1,9 +1,8 @@
-from keras.callbacks import ModelCheckpoint, EarlyStopping
-
-from models.autoencoder.convolutional_autoencoder import Convolutional1DAutoEncoder
+from keras.callbacks import EarlyStopping
 from keras.optimizer_v2.gradient_descent import SGD
 import matplotlib.pyplot as pyplot
-from training_utils import load_dataset, TRAIN_SET_PATH_MEL_SPEC, TEST_SET_PATH_MEL_SPEC, EarlyStoppingByLossVal
+from models.autoencoder.convolutional_autoencoder import Convolutional1DAutoEncoder
+from training_utils import load_dataset, TRAIN_SET_PATH_MEL_SPEC, TEST_SET_PATH_MEL_SPEC
 
 
 def main():

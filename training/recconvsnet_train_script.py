@@ -57,7 +57,7 @@ def main():
     )
     callbacks = [
         EarlyStopping(monitor='val_loss', patience=10, min_delta=0.001, restore_best_weights=True)
-    ]  # This can be replaced with custom early stopping callbacks
+    ]
     version = 0.1  # For easy saving of multiple model versions
 
     # Instantiate the model and compile it
