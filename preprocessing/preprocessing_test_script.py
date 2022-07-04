@@ -5,7 +5,7 @@ import utils as utl
 from features.mel import extract_mfccs, extract_mel_spectrum, MFCC_NUM_DEFAULT, MEL_FILTER_BANK_DEFAULT, \
     DERIVATIVE_ORDER_DEFAULT
 from features.lpcc import extract_lpccs, LPCC_NUM_DEFAULT
-from acoustic_model.gmmhmm import generate_acoustic_model
+from acoustic_model.gmmhmm import generate_acoustic_model, save_acoustic_model
 import numpy as np
 import pandas as pd
 import pickle
@@ -20,6 +20,7 @@ _TRAIN_SET_PATH: final = "data/cleaned/train"
 _TEST_SET_PATH: final = "data/cleaned/test"
 _SPEAKER_DIR_REGEX: final = re.compile("[A-Z]{4}[0-9]")
 _AUDIO_REGEX: final = re.compile("(.*)\\.WAV")
+ACOUSTIC_MODEL_PATH: final = "acoustic_models/"
 
 '''
 _EXCLUDED_SPEAKERS: final = {
@@ -219,6 +220,9 @@ def _generate_speakers_acoustic_model(speakers_audios_features: dict, n_states: 
             n_states=n_states,
             n_mix=n_mix
         )
+
+        path = ACOUSTIC_MODEL_PATH + speaker
+        save_acoustic_model(acoustic_models[speaker], path)
 
     return acoustic_models, acoustic_model_state_labels
 

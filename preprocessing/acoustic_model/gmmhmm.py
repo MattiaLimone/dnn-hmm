@@ -1,3 +1,4 @@
+import pickle
 from typing import final, Union
 import numpy as np
 from sequentia.classifiers.hmm import GMMHMM
@@ -129,3 +130,26 @@ def generate_acoustic_model(X: np.ndarray, label: Union[str, Union[int, float, n
         audios_states.append(audio_states)
 
     return model, audios_states
+
+
+def save_acoustic_model(model: GMMHMM, path: str):
+    """
+    This function takes in input a GMMHMM acoustic model and a path. This function save the given
+    acoustic model in the given path
+
+    :param model: GMMHMM acoustic model to save
+    :param path: path where input model will be saved
+    """
+    with open(path, "wb") as file:
+        pickle.dump(model, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def load_acoustic_model(path: str) -> GMMHMM:
+    """
+    This function load an acoustic model from a given path and return it.
+    :param path: path wher GMMHMM is located
+    :return: GMMHMM acoustic model
+    """
+    with open(path, "rb") as file:
+        gmm_hmm = pickle.load(file)
+        return gmm_hmm
