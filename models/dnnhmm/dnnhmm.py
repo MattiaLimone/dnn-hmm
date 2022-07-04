@@ -3,7 +3,6 @@ import keras
 import numpy as np
 
 
-# TODO: finish off class and method documentation
 class DNNHMM(object):
     """
     This class represents a DNN-HMM model e.g. an HMM whose observation emission probabilities P(x | s) (where x is the
@@ -22,8 +21,10 @@ class DNNHMM(object):
             (n_states, ).
         :param priors: prior probability distribution of each state P(s_0 = s), for s = 1, 2, ..., n_states; shape
             (n_states, ).
-        :raise ValueError if any given shape is incorrect, if any of the given transition matrix row doesn't sum up to
-            1, if state_frequencies elements don't sum up to 1 or priors doesn't sum up to 1.
+        :raise ValueError: if any given shape is incorrect, if any of the given transition matrix rows doesn't sum up to
+            1, if state_frequencies elements or priors if given emission model is invalid (not compiled and built
+            or has a number of output neurons less than n_states, e.g. emission model.output_shape[-1] < n_states).
+            don't sum up to 1.
         """
         self.__n_states = transitions.shape[0]
 
@@ -48,14 +49,30 @@ class DNNHMM(object):
 
     @property
     def n_states(self) -> int:
+        """
+        Retrieves the number of states of the DNN-HMM model.
+
+        :return: the number of states of the DNN-HMM model.
+        """
         return self.__n_states
 
     @property
     def transitions(self) -> np.ndarray:
+        """
+        Retrieves transition matrix of the DNN-HMM model.
+
+        :return: the transition matrix of the DNN-HMM model, with shape (n_states, n_states).
+        """
         return self.__transitions
 
     @transitions.setter
     def transitions(self, transitions: np.ndarray):
+        """
+        Sets transition matrix of the DNN-HMM model.
+
+        :param transitions: novel (n_states, n_states)-shaped transition matrix of the DNN-HMM model.
+        :raises ValueError: if shape is incorrect or any of the given transition matrix rows doesn't sum up to 1.
+        """
         # Validate transition matrix
         self._validate_transition_matrix(transitions)
         self.__n_states = transitions.shape[0]
@@ -63,25 +80,52 @@ class DNNHMM(object):
 
     @property
     def priors(self) -> np.ndarray:
+        """
+        Retrieves prior distribution of the DNN-HMM states (e.g P(s_0 = s), for each state s).
+
+        :return: an array with shape (n_states, ) containing P(s_0 = s), for each HMM state s.
+        """
         return self.__priors
 
     @priors.setter
     def priors(self, priors: np.ndarray):
+        """
+        Sets prior distribution of the DNN-HMM states (e.g P(s_0 = s), for each state s).
+
+        :param priors: novel prior distribution array of shape (n_states, ).
+        :raises ValueError: if shape is incorrect or any of the given probabilities don't sum up to 1.
+        """
         # Validate priors
         self._validate_priors(priors)
         self.__priors = priors
 
     @property
     def state_frequencies(self) -> np.ndarray:
+        """
+        Retrieves frequency distribution of the DNN-HMM states (e.g P(s_0 = s), for each state s).
+
+        :return: an array with shape (n_states, ) containing P(s_0 = s), for each HMM state s.
+        """
         return self.__state_frequencies
 
     @state_frequencies.setter
     def state_frequencies(self, state_frequencies: np.ndarray):
+        """
+        Sets frequency distribution of the DNN-HMM states (e.g P(s), for each state s).
+
+        :param state_frequencies: novel frequency distribution array of shape (n_states, ).
+        :raises ValueError: if shape is incorrect or any of the given frequencies don't sum up to 1.
+        """
         # Validate state frequencies
         self._validate_state_frequencies(state_frequencies)
         self.__state_frequencies = state_frequencies
 
     def _validate_transition_matrix(self, transitions: np.ndarray):
+        """
+        Validates transition matrix of the DNN-HMM model.
+        :param transitions: novel (n_states, n_states)-shaped transition matrix of the DNN-HMM model.
+        :raises ValueError: if shape is incorrect or any of the given transition matrix rows doesn't sum up to 1.
+        """
 
         if self.__n_states != transitions.shape[1] or transitions.ndim != 2:
             raise ValueError("Transition matrix must have shape (n_states, n_states)")
@@ -92,6 +136,12 @@ class DNNHMM(object):
                 raise ValueError("Each transition matrix row must sum up to 1")
 
     def _validate_state_frequencies(self, state_frequencies: np.ndarray):
+        """
+        Validates frequency distribution of the DNN-HMM states (e.g P(s), for each state s).
+
+        :param state_frequencies: novel frequency distribution array of shape (n_states, ).
+        :raises ValueError: if shape is incorrect or any of the given frequencies don't sum up to 1.
+        """
         if state_frequencies.shape != (self.__n_states, ):
             raise ValueError("State frequencies array must have shape (n_states, )")
 
@@ -100,6 +150,12 @@ class DNNHMM(object):
             raise ValueError("State frequencies array must sum up to 1")
 
     def _validate_priors(self, priors: np.ndarray):
+        """
+        Validates prior distribution of the DNN-HMM states (e.g P(s_0 = s), for each state s).
+
+        :param priors: novel prior distribution array of shape (n_states, ).
+        :raises ValueError: if shape is incorrect or any of the given probabilities don't sum up to 1.
+        """
         if priors.shape != (self.__n_states, ):
             raise ValueError("State prior probabilities array must have shape (n_states, )")
 
@@ -108,10 +164,33 @@ class DNNHMM(object):
             raise ValueError("State prior probabilities array must sum up to 1")
 
     def _validate_emission_model(self, emission_model: keras.Model):
-        # TODO: implement emission_model checks
+        """
+        Validates emission model for the DNN-HMM model.
+
+        :param emission_model: the emission model to validate.
+        :raises ValueError: if emission model is invalid (not compiled and built or has a number of output neurons less
+            than n_states, e.g. emission model.output_shape[-1] < n_states).
+        """
+        # TODO: implement more emission_model checks
+        if not emission_model.built:
+            raise ValueError("Emission model must be built prior being used for DNN-HMM state predictions.")
+        if emission_model.output_shape[-1] < self.n_states:
+            raise ValueError("Emission model mus")
         pass
 
-    def _compute_emission_matrix(self, y, state_range) -> np.ndarray:
+    def _compute_emission_matrix(self, y: np.ndarray, state_range: tuple[int, int]) -> np.ndarray:
+        """
+        Computes emission matrix for given observations, taking into account states in the given range (e.g. output
+        neurons of the emission models, corresponding to HMM states).
+
+        :param y: a numpy array of shape (n_obs, ) representing observation sequence to compute the emission matrix for.
+        :param state_range: a 2-element tuple representing the range of the states to take into account (e.g. output
+            neurons of the emission models, corresponding to HMM states).
+        :return: a (n_states, n_obs)-shaped emission matrix, containing the emission probabilities for each
+            observation in y.
+        :raises ValueError: if the given state range is invalid (state_range[1] - state_range[0] != n_states or
+            state_range[0] < state_range[1] <= emission_model.output_shape[-1]).
+        """
 
         # Range of indexes of the emission model output to take into account
         if not state_range[0] < state_range[1] <= self.__emission_model.output_shape[-1]:
@@ -146,14 +225,37 @@ class DNNHMM(object):
         return observations_likelihood
 
     def viterbi(self, y: np.ndarray, state_range: Optional[tuple[int, int]] = None) -> (np.ndarray, np.float64):
+        """
+        Computes the Viterbi estimate of state trajectory of HMM (e.g. most likely hidden state sequence, given an
+        observation sequence and its probability.
+
+        :param y: a numpy array of shape (n_obs, ) representing observation sequence to compute the emission matrix for.
+        :param state_range: a 2-element tuple representing the range of the states to take into account (e.g. output
+            neurons of the emission models, corresponding to HMM states).
+        :return: the most likely state sequence given the observations, and the corresponding posterior probability.
+        :raises ValueError: if y is not 1-dimensional or the given state range is invalid (state_range[1] -
+            state_range[0] != n_states or state_range[0] < state_range[1] <= emission_model.output_shape[-1]).
+        """
+        if y.ndim != 1:
+            raise ValueError("Observation array must be 1-dimensional")
+        if state_range is None:
+            state_range = (0, self.__emission_model.output_shape[-1])
+
+        # Compute emission matrix
         emission_matrix = self._compute_emission_matrix(y, state_range)
+
+        # Compute the most likely state sequence
         most_likely_path, t1, t2 = DNNHMM._viterbi(
             n_obs=len(y),
             a=self.__transitions,
             b=emission_matrix,
             pi=self.__priors
         )
-        return most_likely_path, np.max(t1[:, len(y) - 1])
+
+        # Compute most likely state sequence probability
+        most_likely_path_prob = np.max(t1[:, len(y) - 1])
+
+        return most_likely_path, most_likely_path_prob
 
     @staticmethod
     def _viterbi(n_obs: int, a: np.ndarray, b: np.ndarray, pi: Optional[np.ndarray] = None):
@@ -186,6 +288,7 @@ class DNNHMM(object):
         """
         # Cardinality of the state space
         n_states = a.shape[0]
+
         # Initialize the priors with default (uniform dist) if not given by caller
         pi = pi if pi is not None else np.full(n_states, 1 / n_states)
         t1 = np.empty((n_states, n_obs), 'd')
