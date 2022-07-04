@@ -31,9 +31,9 @@ _EXCLUDED_SPEAKERS: final = {
 }
 '''
 
+AUDIO_DATAFRAME_KEY: final = "Audio_Tensor"
+STATE_PROB_KEY: final = "State_Probabilities"
 _AUDIO_PER_SPEAKER: final = 10
-_AUDIO_DATAFRAME_KEY: final = "Audio_Tensor"
-_STATE_PROB_KEY: final = "State_Probabilities"
 _RANDOM_SEED: final = 47
 
 _N_STATES_MFCCS: final = 5
@@ -309,9 +309,9 @@ def _generate_output_dataframe(audios_feature_tensor: np.ndarray, one_hot_encode
 
     :rtype: pd.DataFrame
     """
-    df = pd.DataFrame(columns=[_AUDIO_DATAFRAME_KEY, _STATE_PROB_KEY])
-    df[_AUDIO_DATAFRAME_KEY] = df[_AUDIO_DATAFRAME_KEY].astype(object)
-    df[_STATE_PROB_KEY] = df[_STATE_PROB_KEY].astype(object)
+    df = pd.DataFrame(columns=[AUDIO_DATAFRAME_KEY, STATE_PROB_KEY])
+    df[AUDIO_DATAFRAME_KEY] = df[AUDIO_DATAFRAME_KEY].astype(object)
+    df[STATE_PROB_KEY] = df[STATE_PROB_KEY].astype(object)
 
     # For each audio feature matrix
     for i in tqdm(range(0, len(audios_feature_tensor)), desc="Generating output dataframes"):

@@ -3,7 +3,7 @@ import keras
 import numpy as np
 
 
-# TODO: add class documentation
+# TODO: finish off class and method documentation
 class DNNHMM(object):
     """
     This class represents a DNN-HMM model e.g. an HMM whose observation emission probabilities P(x | s) (where x is the
@@ -126,9 +126,9 @@ class DNNHMM(object):
         posteriors_sequence = self.__emission_model(y).numpy()[:, state_range[0]:state_range[1]]
 
         # Observation prior is allotted to be a constant value since all observations are assumed to be independent, and
-        # thus it can be ignored
+        # thus it can be ignored completely
         n_obs = len(y)
-        # observation_prior = 1 / n_obs  # Maybe this should be ignored totally
+        # observation_prior = 1 / n_obs  # This should be ignored
         observation_index = 0
         observations_likelihood = np.zeros(shape=(self.__n_states, n_obs))
 
@@ -158,7 +158,8 @@ class DNNHMM(object):
     @staticmethod
     def _viterbi(n_obs: int, a: np.ndarray, b: np.ndarray, pi: Optional[np.ndarray] = None):
         """
-        Return the MAP estimate of state trajectory of Hidden Markov Model.
+        Computes the Viterbi estimate of state trajectory of HMM (e.g. most likely hidden state sequence, given an
+        observation sequence.
 
         Parameters
         ----------
