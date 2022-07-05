@@ -84,7 +84,7 @@ def _fill_speakers_audios_features(speaker_audio_features: dict, max_frames: int
     """
      Fills each given audio frame array of the input dictionary either with 0s or repeating the frames circularly.
 
-    :param speaker_audio_features: A dictionary of speaker-MFCCs/LPCCs pairs
+    :param speaker_audio_features: A dictionary of speaker-MFCCs/LPCCs pairs.
     :param max_frames: An integer. The target length to normalize each audio
     :param feature_num: An integer. Number of features calculated for each frame. If given 0, it will be inferred
                         automatically from the length first frame of the first audio (assuming all the frames are the
@@ -169,6 +169,15 @@ def _generate_speakers_acoustic_model(speakers_audios_features: dict, n_states: 
 
 def _one_hot_encode_state_labels(speakers_raw_state_labels: dict, speaker_indexes: dict, n_states: int) -> \
         list[sp.lil_matrix]:
+    """
+    Generates the one-hot encoding of the frame-level state labels.
+
+    :param speakers_raw_state_labels: a dictionary of speaker-frame level state labels for each audio pairs.
+    :param speaker_indexes: a dictionary indicating the processing order for the speakers.
+    :param n_states: number of HMM states for each speaker.
+    :return: a list of scipy sparse matrices each containing the one-hot encoding of frame-level state labels for a
+        single audio.
+    """
     speakers_global_state_labels = {}
     n_audio = 0  # audio number counter
     max_frames = 0  # maximum number of frames
@@ -229,6 +238,15 @@ def _one_hot_encode_state_labels(speakers_raw_state_labels: dict, speaker_indexe
 
 
 def _generate_audios_feature_tensor(speaker_audios_features: dict, speaker_indexes: dict) -> np.ndarray:
+    """
+    Generates a tensor containing a feature matrix for each audio.
+
+    :param speaker_audios_features: dictionary of speaker-audio features (MFCCs, LPCCs, Mel-scaled log-spectrogram)
+        pairs.
+    :param speaker_indexes: a dictionary indicating the processing order for the speakers.
+    :return: a (n_audio, max_frames, n_features)-shaped tensor, where each of the n_audio matrices contains the audio
+        features for each frame.
+    """
     # Create n_audio x max_frames x (n_features) tensor to contain the feature matrix of each audio
     audios_feature_tensor = None
 
@@ -250,8 +268,15 @@ def _generate_audios_feature_tensor(speaker_audios_features: dict, speaker_index
 def _generate_output_dataframe(audios_feature_tensor: np.ndarray, one_hot_encoded_labels: list[sp.lil_matrix]) -> \
         pd.DataFrame:
     """
+    Converts the (n_audio, max_frames, n_features)-shaped and the list containing the one-hot encoding of the
+    frame-level state labels into a pandas dataframe.
 
-    :rtype: pd.DataFrame
+    :param audios_feature_tensor: (n_audio, max_frames, n_features)-shaped tensor, where each of the n_audio matrices
+        contains the audio features for each frame.
+    :param one_hot_encoded_labels: list of scipy sparse matrices each containing the one-hot encoding of frame-level
+        state labels for a single audio.
+    :return: a pandas DataFrame object with 2 columns: the first one containing the audios_feature_tensor entries on
+        each row, and the second one containing one_hot_encoded_labels entries on each row.
     """
     df = pd.DataFrame(columns=[AUDIO_DATAFRAME_KEY, STATE_PROB_KEY])
     df[AUDIO_DATAFRAME_KEY] = df[AUDIO_DATAFRAME_KEY].astype(object)
