@@ -172,6 +172,24 @@ class RecConv1DSiameseNet(Model):
         )
         return tail
 
+    @property
+    def input_shape_rec_branch(self) -> tuple[Optional[int], int, ...]:
+        """
+        Retrieves the input shape of the recurrent branch of the network.
+
+        :return: a tuple representing the input shape of the recurrent branch of the network.
+        """
+        return self.__input_shape_rec_branch
+
+    @property
+    def input_shape_conv_branch(self) -> tuple[int, int, ...]:
+        """
+        Retrieves the input shape of the convolutional branch of the network.
+
+        :return: a tuple representing the input shape of the convolutional branch of the network.
+        """
+        return self.__input_shape_conv_branch
+
     def call(self, inputs, training=None, mask=None):
         rec_branch_input, conv_branch_input = inputs
         rec_output = self.__recurrent_branch(rec_branch_input)
