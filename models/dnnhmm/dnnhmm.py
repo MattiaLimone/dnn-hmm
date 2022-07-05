@@ -303,7 +303,7 @@ class DNNHMM(object):
             t1[:, i] = np.max(t1[:, i - 1] * a.T * b[np.newaxis, :, i].T, 1)
             t2[:, i] = np.argmax(t1[:, i - 1] * a.T, 1)
 
-        # Build the output, optimal model trajectory
+        # Build the output, optimal model trajectory, backtracking from the last state
         most_likely_path = np.empty(n_obs, 'b')
         most_likely_path[-1] = np.argmax(t1[:, n_obs - 1])
         for i in reversed(range(1, n_obs)):

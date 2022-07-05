@@ -1,6 +1,7 @@
 from typing import final
 import keras.models
 import keras.losses
+from keras.callbacks import EarlyStopping
 from keras.optimizer_v2.adadelta import Adadelta
 from matplotlib import pyplot
 from models.recconvsnet.recconvsnet import RecConv1DSiameseNet
@@ -32,7 +33,6 @@ def main():
     # Get input shapes
     input_shape_conv_branch = conv_autoencoder.input_shape
     input_shape_rec_branch = rec_autoencoder.input_shape
-    timesteps = input_shape_rec_branch[1]
 
     # Get recurrent and convolutional encoder layers
     conv_branch = conv_autoencoder.get_layer(ENCODER_MODEL_NAME).layers
@@ -54,7 +54,9 @@ def main():
         epsilon=1e-7,
         name='adadelta_optimizer'
     )
-    callbacks = None  # This can be replaced with custom early stopping callbacks
+    callbacks = [
+        EarlyStopping(monitor='val_loss', patience=10, min_delta=0.001, restore_best_weights=True)
+    ]
     version = 0.1  # For easy saving of multiple model versions
 
     # Instantiate the model and compile it
@@ -66,7 +68,7 @@ def main():
         tail_dense_units=tail_dense_units,
         output_dim=total_state_number,
         tail_dense_activation='relu',
-        timesteps_repeat_vector_conv_branch=timesteps
+        add_repeat_vector_conv_branch=True
     )
     model.compile(optimizer=optimizer, loss=loss,)
     model.summary(expand_nested=True)
