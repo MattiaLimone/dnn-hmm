@@ -33,7 +33,7 @@ def main():
         tail_dense_units=1024,
         output_dim=output_dim,
         tail_dense_activation='relu',
-        timesteps_repeat_vector_conv_branch=timesteps
+        add_repeat_vector_conv_branch=True
     )
     model.summary()
 
