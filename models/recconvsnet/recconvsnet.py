@@ -187,8 +187,8 @@ class RecConv1DSiameseNet(Model):
                 units=tail_dense_units,
                 activation=tail_dense_activation,
                 kernel_regularizer=kernel_regularizer_dense,
-                bias_regularizer_dense=bias_regularizer_dense,
-                activity_regularizer_dense=activity_regularizer_dense,
+                bias_regularizer=bias_regularizer_dense,
+                activity_regularizer=activity_regularizer_dense,
             ),
             name="tail_dense0"
         )(merge)
@@ -202,8 +202,8 @@ class RecConv1DSiameseNet(Model):
                 units=output_dim,
                 activation=tail_dense_activation,
                 kernel_regularizer=kernel_regularizer_softmax,
-                bias_regularizer_dense=bias_regularizer_softmax,
-                activity_regularizer_dense=activity_regularizer_softmax
+                bias_regularizer=bias_regularizer_softmax,
+                activity_regularizer=activity_regularizer_softmax
             ),
             name="tail_output_dense"
         )(dense0)
