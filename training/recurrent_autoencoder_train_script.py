@@ -20,18 +20,18 @@ def main():
     input_shape = (None, ) + train_audio_tensor_numpy.shape[1:]
 
     # Set model parameters
-    unit_types = ["LSTM" for _ in range(0, 3)]
-    recurrent_units = [1024, 512, 256]
-    activations = ["tanh" for _ in range(0, 3)]
-    latent_space_dim = 512
+    unit_types = ["LSTM" for _ in range(0, 5)]
+    recurrent_units = [512, 512, 256, 128, 128]
+    activations = ["tanh" for _ in range(0, 5)]
+    latent_space_dim = 128
     bottleneck_unit_type = "LSTM"
     bottleneck_activation = "tanh"
     recurrent_units_dropout = 0.0
     recurrent_dropout = 0.0
 
     # Set model training parameters
-    epochs = 950
-    batch_size = 200
+    epochs = 1000
+    batch_size = 100
     optimizer = Adadelta(
         learning_rate=1,
         rho=0.95,
