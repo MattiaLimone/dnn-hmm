@@ -187,8 +187,8 @@ class RecConv1DSiameseNet(Model):
                 units=tail_dense_units,
                 activation=tail_dense_activation,
                 kernel_regularizer=kernel_regularizer_dense,
-                bias_regularizer_dense=bias_regularizer_dense,
-                activity_regularizer_dense=activity_regularizer_dense,
+                bias_regularizer=bias_regularizer_dense,
+                activity_regularizer=activity_regularizer_dense,
             ),
             name="tail_dense0"
         )(merge)
@@ -200,10 +200,9 @@ class RecConv1DSiameseNet(Model):
         dense1 = TimeDistributed(
             Dense(
                 units=output_dim,
-                activation=tail_dense_activation,
                 kernel_regularizer=kernel_regularizer_softmax,
-                bias_regularizer_dense=bias_regularizer_softmax,
-                activity_regularizer_dense=activity_regularizer_softmax
+                bias_regularizer=bias_regularizer_softmax,
+                activity_regularizer=activity_regularizer_softmax
             ),
             name="tail_output_dense"
         )(dense0)
@@ -244,7 +243,6 @@ class RecConv1DSiameseNet(Model):
 
     def get_config(self) -> dict[str, Union[None, list[Optional[dict[str, Any]]], tuple, int]]:
         config_dict = {
-            "latent_space_dim": self._latent_space_dim,
             **self.__recurrent_branch.get_config(),
             **self.__conv_branch.get_config(),
             **self.__tail.get_config()
