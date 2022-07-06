@@ -200,7 +200,6 @@ class RecConv1DSiameseNet(Model):
         dense1 = TimeDistributed(
             Dense(
                 units=output_dim,
-                activation=tail_dense_activation,
                 kernel_regularizer=kernel_regularizer_softmax,
                 bias_regularizer=bias_regularizer_softmax,
                 activity_regularizer=activity_regularizer_softmax
