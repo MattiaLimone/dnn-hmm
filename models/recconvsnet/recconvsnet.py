@@ -243,7 +243,6 @@ class RecConv1DSiameseNet(Model):
 
     def get_config(self) -> dict[str, Union[None, list[Optional[dict[str, Any]]], tuple, int]]:
         config_dict = {
-            "latent_space_dim": self._latent_space_dim,
             **self.__recurrent_branch.get_config(),
             **self.__conv_branch.get_config(),
             **self.__tail.get_config()
