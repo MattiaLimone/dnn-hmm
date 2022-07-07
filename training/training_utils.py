@@ -1,3 +1,4 @@
+from typing import Union
 import numpy as np
 import pandas as pd
 from keras.callbacks import Callback
@@ -17,17 +18,24 @@ def pandas_object_to_numpy_array(pandas_object) -> np.ndarray:
     return audio_tensor
 
 
-def load_dataset(path: str) -> (np.ndarray, list[sp.lil_matrix]):
+def load_dataset(path: str, mode: int = 0) -> Union[pd.DataFrame, tuple[np.ndarray, list[sp.lil_matrix]]]:
     """
     Loads audio dataset from given path.
 
     :param path: path to load the dataset from.
+    :param mode: if given 0 (as by default), numpy tensor containing audio features is unpacked from dataframe and
+        separated from labels; if given 1 entire dataframe is given.
     :return: the loaded dataset with the corresponding labels.
     """
+
     pandas_object_dataset = pd.read_pickle(path)
-    numpy_tensor_dataset = pandas_object_to_numpy_array(pandas_object_dataset[AUDIO_DATAFRAME_KEY])
-    labels_sparse_matrix_list = list(pandas_object_dataset[STATE_PROB_KEY])
-    return numpy_tensor_dataset, labels_sparse_matrix_list
+
+    if mode == 0:
+        numpy_tensor_dataset = pandas_object_to_numpy_array(pandas_object_dataset[AUDIO_DATAFRAME_KEY])
+        labels_sparse_matrix_list = list(pandas_object_dataset[STATE_PROB_KEY])
+        return numpy_tensor_dataset, labels_sparse_matrix_list
+    elif mode == 1:
+        return pandas_object_dataset
 
 
 def get_label_number(labels: list[sp.lil_matrix]) -> int:
