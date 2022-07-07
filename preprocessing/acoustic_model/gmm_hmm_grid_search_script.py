@@ -162,13 +162,13 @@ def main():
     )
 
     print("n_mix quantiles: ")
-    print(np.quantiles(best_params["n_mix"].to_numpy(), [0, 0.25, 0.5, 0.75, 1]))
+    print(np.quantile(best_params["n_mix"].to_numpy(), [0, 0.25, 0.5, 0.75, 1]))
 
     print("n_states quantiles: ")
-    print(np.quantiles(best_params["n_states"].to_numpy(), [0, 0.25, 0.5, 0.75, 1]))
+    print(np.quantile(best_params["n_states"].to_numpy(), [0, 0.25, 0.5, 0.75, 1]))
 
     print("score quantiles: ")
-    print(np.quantiles(best_params["score"].to_numpy(), [0, 0.25, 0.5, 0.75, 1]))
+    print(np.quantile(best_params["score"].to_numpy(), [0, 0.25, 0.5, 0.75, 1]))
 
 
 if __name__ == "__main__":
