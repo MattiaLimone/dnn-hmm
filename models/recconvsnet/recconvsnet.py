@@ -1,6 +1,6 @@
 from typing import Optional, Any, Union, final
 from keras.layers import RNN, BatchNormalization, LayerNormalization, Conv1D, TimeDistributed, Concatenate, Dense, \
-    Softmax, RepeatVector, Flatten, Layer, InputLayer
+    Softmax, RepeatVector, Flatten, Layer, InputLayer, Dropout
 from keras.layers.pooling import Pooling1D
 from keras.models import Model, Sequential
 
@@ -34,7 +34,9 @@ class RecConv1DSiameseNet(Model):
                  conv_branch_layers: list[Conv1D, BatchNormalization, LayerNormalization, Pooling1D, Dense, Layer],
                  input_shape_rec_branch: tuple[Optional[int], int, ...],
                  input_shape_conv_branch: tuple[Optional[int], int, ...], tail_dense_units: int, output_dim: int,
-                 tail_dense_activation='relu', add_repeat_vector_conv_branch: bool = False):
+                 tail_dense_activation='relu', add_repeat_vector_conv_branch: bool = False, dropout_dense=0.0,
+                 kernel_regularizer_dense=None, bias_regularizer_dense=None, activity_regularizer_dense=None,
+                 kernel_regularizer_softmax=None, bias_regularizer_softmax=None, activity_regularizer_softmax=None):
         """
         Constructor. Instantiates a new RecConv1DSiameseNet model with given parameters.
 
@@ -53,6 +55,13 @@ class RecConv1DSiameseNet(Model):
         :param tail_dense_activation: activation function of the tail dense layer (by default, ReLU is used).
         :param add_repeat_vector_conv_branch: whether to add a RepeatVector at the end of the convolutional branch
             (which will have the same number of timesteps as the convolutional branch).
+        :param dropout_dense: dropout rate for the dense layer prior to the last layer.
+        :param kernel_regularizer_dense: kernel regularizer for the dense layer prior to the last layer.
+        :param bias_regularizer_dense: bias regularizer for the dense layer prior to the last layer.
+        :param activity_regularizer_dense: activity regularizer for the dense layer prior to the last layer.
+        :param kernel_regularizer_dense: kernel regularizer for the last layer.
+        :param bias_regularizer_dense: bias regularizer for the last layer.
+        :param activity_regularizer_dense: activity regularizer for the last layer.
         :raises ValueError: if rec_branch_layers or conv_branch_layers contain any InputLayer, if input shapes are
             incorrect or if given tail_dense_units/output_dim are invalid.
         """
@@ -77,7 +86,18 @@ class RecConv1DSiameseNet(Model):
         self.__conv_branch = self._build_conv_branch(conv_branch_layers, add_repeat_vector_conv_branch)
 
         # Build tail
-        self.__tail = self._build_tail(tail_dense_units, tail_dense_activation, output_dim)
+        self.__tail = self._build_tail(
+            tail_dense_units,
+            tail_dense_activation,
+            output_dim,
+            dropout_dense,
+            kernel_regularizer_dense,
+            bias_regularizer_dense,
+            activity_regularizer_dense,
+            kernel_regularizer_softmax,
+            bias_regularizer_softmax,
+            activity_regularizer_softmax
+        )
 
         # Build the model
         self.build(input_shape=[input_shape_rec_branch, input_shape_conv_branch])
@@ -140,13 +160,22 @@ class RecConv1DSiameseNet(Model):
             )
         return conv_branch
 
-    def _build_tail(self, tail_dense_units: int, tail_dense_activation, output_dim: int) -> Model:
+    def _build_tail(self, tail_dense_units: int, tail_dense_activation, output_dim: int, dropout_dense,
+                    kernel_regularizer_dense, bias_regularizer_dense, activity_regularizer_dense,
+                    kernel_regularizer_softmax, bias_regularizer_softmax, activity_regularizer_softmax) -> Model:
         """
         Builds the tail of the double-branched network.
 
         :param tail_dense_units: number of units of the tail dense layer.
         :param tail_dense_activation: activation function of the tail dense layer (by default, ReLU is used).
         :param output_dim: number of units/classes of the output layer.
+        ::param dropout_dense: dropout rate for the dense layer prior to the last layer.
+        :param kernel_regularizer_dense: kernel regularizer for the dense layer prior to the last layer.
+        :param bias_regularizer_dense: bias regularizer for the dense layer prior to the last layer.
+        :param activity_regularizer_dense: activity regularizer for the dense layer prior to the last layer.
+        :param kernel_regularizer_dense: kernel regularizer for the last layer.
+        :param bias_regularizer_dense: bias regularizer for the last layer.
+        :param activity_regularizer_dense: activity regularizer for the last layer.
         :return: a keras Model representing the tail of the double-branched network.
         """
         merge = TimeDistributed(
@@ -154,11 +183,27 @@ class RecConv1DSiameseNet(Model):
             name="tail_concatenate_layer"
         )([self.__recurrent_branch.output, self.__conv_branch.output])
         dense0 = TimeDistributed(
-            Dense(units=tail_dense_units, activation=tail_dense_activation),
+            Dense(
+                units=tail_dense_units,
+                activation=tail_dense_activation,
+                kernel_regularizer=kernel_regularizer_dense,
+                bias_regularizer=bias_regularizer_dense,
+                activity_regularizer=activity_regularizer_dense,
+            ),
             name="tail_dense0"
         )(merge)
+        if dropout_dense > 0:
+            dense0 = TimeDistributed(
+                Dropout(rate=dropout_dense),
+                name="tail_dropout_dense"
+            )(dense0)
         dense1 = TimeDistributed(
-            Dense(units=output_dim, activation=tail_dense_activation),
+            Dense(
+                units=output_dim,
+                kernel_regularizer=kernel_regularizer_softmax,
+                bias_regularizer=bias_regularizer_softmax,
+                activity_regularizer=activity_regularizer_softmax
+            ),
             name="tail_output_dense"
         )(dense0)
         output = TimeDistributed(
@@ -198,7 +243,6 @@ class RecConv1DSiameseNet(Model):
 
     def get_config(self) -> dict[str, Union[None, list[Optional[dict[str, Any]]], tuple, int]]:
         config_dict = {
-            "latent_space_dim": self._latent_space_dim,
             **self.__recurrent_branch.get_config(),
             **self.__conv_branch.get_config(),
             **self.__tail.get_config()

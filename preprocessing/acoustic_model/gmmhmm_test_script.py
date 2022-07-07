@@ -73,7 +73,6 @@ def main():
         best_gmmhmm_model, best_score, best_params = gmm_hmm_grid_search(train_set_array_mfcc, train_set_lengths_mfcc,
                                                                          min_state_number=1, max_state_number=7,
                                                                          min_mix_number=1, max_mix_number=8,
-                                                                         min_iter_number=10, max_iter_number=20,
                                                                          verbose=True)
         print("MFCCs best scores and params: ")
         print(best_score)
@@ -94,8 +93,6 @@ def main():
             min_state_number=2,
             max_state_number=4,
             min_mix_number=1, max_mix_number=2,
-            min_iter_number=5,
-            max_iter_number=10,
             verbose=True
         )
 
@@ -118,8 +115,6 @@ def main():
             min_state_number=2,
             max_state_number=4,
             min_mix_number=1, max_mix_number=3,
-            min_iter_number=5,
-            max_iter_number=10,
             verbose=True
         )
 

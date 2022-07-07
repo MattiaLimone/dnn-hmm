@@ -10,14 +10,13 @@ N_STATES_DEFAULT: final = 5
 N_MIX_DEFAULT: final = 2
 
 
-def gmm_hmm_grid_search(X: np.ndarray, sequence_lengths: np.ndarray = None, min_state_number: int = 1,
+def gmm_hmm_grid_search(X: np.ndarray, min_state_number: int = 1,
                         max_state_number: int = 10, min_mix_number: int = 1, max_mix_number: int = 7,
                         verbose: bool = False) -> (GMMHMM, list, float):
     """
     Perform grid search to fit the best GMM-HMM model on a given speaker's audio set
 
-    :param X: A Numpy Array. The concatenated array of the MFCCs extracted by all speaker's audio frames
-    :param sequence_lengths: A Numpy Array. The array of concatenated audio sequences
+    :param X: A Numpy Array. 3-D Array of the MFCCs extracted by all speaker's audio frames.
     :param min_state_number: An integer. The minimum number of states for grid search
     :param max_state_number: An integer. The maximum number of states for grid search
     :param min_mix_number: An integer. The minimum number of Gaussian Mixtures for grid search
@@ -42,15 +41,15 @@ def gmm_hmm_grid_search(X: np.ndarray, sequence_lengths: np.ndarray = None, min_
         raise ValueError("Maximum Gaussian mixture number must be strictly positive.")
 
     # Split train and vaidation sets
-    n_audio_train = int(len(sequence_lengths) * TRAIN_PERCENTAGE)
-    training_set_end = np.sum(sequence_lengths[:n_audio_train])
-    train_set_grid_search = X[:training_set_end]
-    validation_set_grid_search = X[training_set_end:]
+    n_audio_train = int(X.shape[0] * TRAIN_PERCENTAGE)
+    train_set_grid_search = X[:n_audio_train]
+    validation_set_grid_search = X[n_audio_train:]
 
     # Initialize best model/score/params variables
     best_model_score = None
-    best_model_params = {"n_state": None, "n_mix": None}
+    best_model_params = {"n_states": None, "n_mix": None}
     best_model_grid = None
+    sequence_lengths = [X.shape[1] for _ in range(0, X.shape[0])]
 
     # For each n_states in the given range
     for n_states in tqdm(range(min_state_number, max_state_number + 1)):
@@ -60,15 +59,21 @@ def gmm_hmm_grid_search(X: np.ndarray, sequence_lengths: np.ndarray = None, min_
 
             # Generate acoustic model with the fixed parameters and get its score
             model, _ = generate_acoustic_model(train_set_grid_search, label="dummy", n_states=n_states, n_mix=n_mix)
-            score = model.model.score(validation_set_grid_search, sequence_lengths[n_audio_train:])
+            score = model.model.score(
+                np.reshape(
+                    validation_set_grid_search,
+                    newshape=(validation_set_grid_search.shape[0]*X.shape[1], X.shape[2])
+                ),
+                sequence_lengths[n_audio_train:]
+            )
 
             if verbose:
-                print("\n\nn_mix: " + str(n_mix) + " n_state: " + str(n_states))
+                print("\n\nn_mix: " + str(n_mix) + " n_states: " + str(n_states))
                 print("score: " + str(score))
 
             # If the score is better than the actual best score, update the best model/score/parameters
             if best_model_score is None or best_model_score < score:
-                best_model_params["n_state"] = n_states
+                best_model_params["n_states"] = n_states
                 best_model_params["n_mix"] = n_mix
                 best_model_score = score
                 best_model_grid = model
