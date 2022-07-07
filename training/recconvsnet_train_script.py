@@ -63,7 +63,7 @@ def main():
     )]
     version = 0.3  # For easy saving of multiple model versions
 
-    # Instantiate the model and  ahcompile it
+    # Instantiate the model and compile it
     # era regularizers.L1L2(l1=1e-04, l2=1e-03)
     # era regularizers.L1(1e-04)
     model = RecConv1DSiameseNet(
