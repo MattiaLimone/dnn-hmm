@@ -1,5 +1,5 @@
 from recconvsnet import RecConv1DSiameseNet
-from keras.layers import LSTM, Conv1D, AvgPool1D, BatchNormalization, Flatten, Dense
+from keras.layers import LSTM, Conv1D, AvgPool1D, BatchNormalization
 from models.autoencoder.autoencoder import FlattenDenseLayer
 
 

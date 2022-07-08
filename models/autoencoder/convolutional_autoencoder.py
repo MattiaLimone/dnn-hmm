@@ -1,8 +1,8 @@
 from typing import Iterable, final, Optional, Union
 import numpy as np
 from autoencoder import AutoEncoder
-from keras.layers import MaxPooling1D, UpSampling1D, Conv1D, Layer, BatchNormalization, AveragePooling1D, Flatten, \
-    Dense, Dropout, Conv1DTranspose, Reshape
+from keras.layers import MaxPooling1D, UpSampling1D, Conv1D, Layer, BatchNormalization, AveragePooling1D, Dropout, \
+    Dense, Conv1DTranspose, Reshape
 from autoencoder import FlattenDenseLayer, _RANDOM_SEED
 
 AVG_POOL: final = "AVG"

@@ -2,9 +2,8 @@ from sequentia import GMMHMM
 from preprocessing.acoustic_model.gmmhmm import load_acoustic_model
 from tqdm.auto import tqdm
 import pandas as pd
-from preprocessing.constants import ACOUSTIC_MODEL_PATH, TRAIN_SET_PATH_MFCCS, \
-    TEST_SET_PATH_MFCCS, AUDIO_PER_SPEAKER, AUDIO_DATAFRAME_KEY, STATE_PROB_KEY, N_STATES_MFCCS, \
-    ACOUSTIC_MODEL_PATH_MFCCS
+from preprocessing.constants import TRAIN_SET_PATH_MFCCS, TEST_SET_PATH_MFCCS, AUDIO_PER_SPEAKER, AUDIO_DATAFRAME_KEY,\
+    STATE_PROB_KEY, N_STATES_MFCCS, ACOUSTIC_MODEL_PATH_MFCCS
 from preprocessing.file_utils import generate_or_load_speaker_ordered_dict
 from training.training_utils import load_dataset, one_hot_labels_to_integer_labels
 
@@ -18,7 +17,7 @@ def _load_speakers_acoustic_models(speakers: list[str]) -> dict[str, GMMHMM]:
     """
     acoustic_models = {}
 
-    # For each speaker
+    # For each speaker, load MFCCs acoustic model
     for speaker in speakers:
         path = f"{ACOUSTIC_MODEL_PATH_MFCCS}{speaker}.pkl"
         acoustic_models[speaker] = load_acoustic_model(path)
