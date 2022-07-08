@@ -23,7 +23,7 @@ def main():
 
     model.compile(optimizer='adam', loss='mse')
     # model.build()
-    model.summary()
+    model.summary(expand_nested=True)
 
 
 if __name__ == "__main__":
