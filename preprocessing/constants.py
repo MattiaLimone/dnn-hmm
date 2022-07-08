@@ -1,7 +1,7 @@
 from typing import final
 
 # Acoustic model-related constants
-TRAIN_PERCENTAGE: final = 0.70
+TRAIN_PERCENTAGE: final = 0.8
 N_STATES_MFCCS: final = 5
 N_MIX_MFCCS: final = 4
 N_STATES_LPCCS: final = 4
