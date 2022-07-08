@@ -1,3 +1,4 @@
+from multiprocessing.connection import Connection
 from typing import final, Optional
 from tqdm.auto import tqdm
 import numpy as np
@@ -7,12 +8,13 @@ from preprocessing.features.mel import extract_mfccs, MFCC_NUM_DEFAULT, DERIVATI
 from gmmhmm import gmm_hmm_grid_search
 from preprocessing.constants import DATASET_ORIGINAL_PATH
 from preprocessing.file_utils import speaker_audio_filenames, SPEAKER_DIR_REGEX, AUDIO_REGEX
-from multiprocessing import Process as Thread
+from multiprocessing import Process as Thread, Pipe
 
 
-_N_STATES_MAX_MFCCS: final = 20
+_RANDOM_SEED: final = 47
+_N_STATES_MAX_MFCCS: final = 10
 _N_MIX_MAX_MFCCS: final = 15
-_N_JOBS: final = 4
+_N_JOBS: final = 5
 
 
 def _speakers_audios_mfccs_max_frames(speakers_audios_names: dict) -> (dict, int):
@@ -120,29 +122,37 @@ def _acoustic_model_grid_search_multithread(speakers_audios_features: dict, n_st
         n_speaker_per_job = len(speakers) // n_jobs
         threads = []
         results = [None for _ in range(0, n_jobs)]
+        pipes = [Pipe() for _ in range(0, n_jobs)]
 
         # Create jobs from 1 to n_jobs-1 splitting
         for i in range(0, n_jobs - 1):
             target_speakers = speakers[i * n_speaker_per_job:i * n_speaker_per_job + n_speaker_per_job]
+            pipe_write_end_connection = pipes[i][1]
             thread = Thread(
                 target=__acoustic_model_grid_search_single_thread,
-                args=(speakers_audios_features, n_states_max, n_mix_max, target_speakers, i, results),
+                args=(speakers_audios_features, n_states_max, n_mix_max, target_speakers, pipe_write_end_connection),
                 name=f"grid_search_thread{i}"
             )
             threads.append(thread)
 
         # Create last job
         target_speakers = speakers[(n_jobs - 1) * n_speaker_per_job:]
+        pipe_write_end_connection = pipes[n_jobs - 1][1]
         last_thread = Thread(
             target=__acoustic_model_grid_search_single_thread,
-            args=(speakers_audios_features, n_states_max, n_mix_max, target_speakers),
+            args=(speakers_audios_features, n_states_max, n_mix_max, target_speakers, pipe_write_end_connection),
             name=f"grid_search_thread{n_jobs - 1}"
         )
         threads.append(last_thread)
 
         # Execute threads
-        for i in range(n_jobs):
+        for i in range(0, n_jobs):
             threads[i].start()
+
+        # Read results through pipes
+        for i in range(0, n_jobs):
+            pipe_read_end_connection = pipes[i][0]
+            results[i] = pipe_read_end_connection.recv()
 
         # Wait end of execution
         for i in range(n_jobs):
@@ -160,8 +170,8 @@ def _acoustic_model_grid_search_multithread(speakers_audios_features: dict, n_st
 
 
 def __acoustic_model_grid_search_single_thread(speakers_audios_features: dict, n_states_max: int, n_mix_max: int,
-                                               target_speakers: Optional[list[str]] = None, index: Optional[int] = None,
-                                               results: Optional[list[pd.DataFrame]] = None) -> pd.DataFrame:
+                                               target_speakers: Optional[list[str]] = None,
+                                               results_connection: Connection = None) -> pd.DataFrame:
     """
     Executes grid search to find best parameters for each speaker acoustic model.
 
@@ -170,17 +180,10 @@ def __acoustic_model_grid_search_single_thread(speakers_audios_features: dict, n
     :param n_mix_max: number of mixtures for each state.
     :param target_speakers: a list of speaker identifiers to take into account when executing acoustic model grid
         search (if given None, all speakers shall be taken into account).
-    :param results: list of results to store the results (for multithreading purposes).
-    :param index: index of the results list to store the result into (for multithreading purposes).
+    :param results_connection: pipe connection to write results into (for multithreading purposes).
     :return: a pandas DataFrame containing best n_states/n_mix combination for acoustic model alongside best model
         score.
-    :raises ValueError: if index is out of bounds of results, or if it is None and results is not.
     """
-    if results is not None and index is None:
-        raise ValueError("index cannot be None while passing results argument")
-    if index is not None:
-        if results is not None and (index < 0 or index >= len(results)):
-            raise ValueError(f"index must be between {0} and {len(results)} if given")
 
     if target_speakers is None:
         target_speakers = list(speakers_audios_features.keys())
@@ -198,7 +201,7 @@ def __acoustic_model_grid_search_single_thread(speakers_audios_features: dict, n
         _, best_speaker_params, score = gmm_hmm_grid_search(
             X=speaker_audios,
             min_state_number=1,
-            max_state_number=10,
+            max_state_number=n_states_max,
             min_mix_number=1,
             max_mix_number=n_mix_max,
             verbose=False
@@ -207,8 +210,9 @@ def __acoustic_model_grid_search_single_thread(speakers_audios_features: dict, n
         # Store the found params and score to pandas DataFrame
         best_params.loc[speaker] = [best_speaker_params["n_states"], best_speaker_params["n_mix"], score]
 
-    if results is not None:
-        results[index] = best_params
+    if results_connection is not None:
+        results_connection.send(best_params)
+        results_connection.close()
 
     return best_params
 
@@ -242,12 +246,18 @@ def main():
 
     print("n_mix quantiles: ")
     print(np.quantile(best_params["n_mix"].to_numpy(), [0, 0.25, 0.5, 0.75, 1]))
+    print("n_mix mean: ")
+    print(np.mean(best_params["n_mix"].to_numpy()))
 
     print("n_states quantiles: ")
     print(np.quantile(best_params["n_states"].to_numpy(), [0, 0.25, 0.5, 0.75, 1]))
+    print("n_states mean: ")
+    print(np.mean(best_params["n_states"].to_numpy()))
 
     print("score quantiles: ")
     print(np.quantile(best_params["score"].to_numpy(), [0, 0.25, 0.5, 0.75, 1]))
+    print("score mean: ")
+    print(np.mean(best_params["score"].to_numpy()))
 
 
 if __name__ == "__main__":
