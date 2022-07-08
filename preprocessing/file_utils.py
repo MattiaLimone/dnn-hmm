@@ -79,13 +79,15 @@ def __speakers_audios_filenames_rec(path: str, speakers_audios: dict[str, list[s
                     )
 
 
-def generate_or_load_speaker_ordered_dict(speakers: list, generate: bool = False) -> OrderedDict:
+def generate_or_load_speaker_ordered_dict(speakers: Optional[list] = None, generate: bool = False) -> OrderedDict:
     """
-    Generates or loads from file an ordered dictionary of speaker:index pairs to be used in the one hot encoding process
+    Generates or loads from file an ordered dictionary of speaker:index pairs.
 
-    :param speakers: A list of keys that represent each speaker
-    :param generate: A boolean. If True it generates the dictionary, otherwise it loads the dictionary from file
-    :return: An ordered dictionary speaker -> index.
+    :param speakers: A list of keys that represent each speaker.
+    :param generate: A boolean. If True it generates the dictionary, otherwise it loads the dictionary from file.
+    :return: An ordered dictionary speaker -> index (generating and saving it if it doesn't exist or generate flag is
+        given.
+    :raises ValueError: if speakers is given None and speaker indexes dictionary has to be generated.
     """
     speaker_indexes = OrderedDict()
     generate_flag = generate
@@ -100,6 +102,8 @@ def generate_or_load_speaker_ordered_dict(speakers: list, generate: bool = False
 
     # If generate flag is True, generate new speaker indexes OrderedDict and save it to file with pickle
     if generate_flag:
+        if speakers is None:
+            raise ValueError("Cannot generate speaker indexes dictionary if speaker names are not given")
         for i in range(0, len(speakers)):
             speaker_indexes[speakers[i]] = i
 

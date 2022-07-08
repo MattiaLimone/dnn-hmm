@@ -190,3 +190,5 @@ data
 data/
 data/cleaned
 /data/
+/fitted_autoencoder/
+/acoustic_models/

@@ -9,6 +9,9 @@ N_MIX_LPCCS: final = 2
 N_STATES_MEL_SPEC: final = 3
 N_MIX_MEL_SPEC: final = 2
 ACOUSTIC_MODEL_PATH: final = "acoustic_models/"
+ACOUSTIC_MODEL_PATH_MFCCS: final = ACOUSTIC_MODEL_PATH + "/mfccs/"
+ACOUSTIC_MODEL_PATH_LPCCS: final = ACOUSTIC_MODEL_PATH + "acoustic_models/lpccs/"
+ACOUSTIC_MODEL_PATH_MEL_SPEC: final = ACOUSTIC_MODEL_PATH + "mel_spec/"
 
 # Preprocessed train/test set-related constants
 TRAIN_SET_PATH: final = "data/cleaned/train"
@@ -25,4 +28,3 @@ STATE_PROB_KEY: final = "State_Probabilities"
 # Original dataset-related constants
 DATASET_ORIGINAL_PATH: final = "data/lisa/data/timit/raw/TIMIT/"
 AUDIO_PER_SPEAKER: final = 10
-

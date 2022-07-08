@@ -1,4 +1,4 @@
-from typing import final
+from typing import final, Optional
 from tqdm.auto import tqdm
 import numpy as np
 import pandas as pd
@@ -9,9 +9,9 @@ from features.mel import extract_mfccs, extract_mel_spectrum, MFCC_NUM_DEFAULT, 
     DERIVATIVE_ORDER_DEFAULT
 from features.lpcc import extract_lpccs, LPCC_NUM_DEFAULT
 from acoustic_model.gmmhmm import generate_acoustic_model, save_acoustic_model
-from preprocessing.constants import ACOUSTIC_MODEL_PATH, TRAIN_PERCENTAGE, AUDIO_DATAFRAME_KEY, \
-    STATE_PROB_KEY, N_STATES_MFCCS, N_MIX_MFCCS, N_STATES_LPCCS, N_MIX_LPCCS, N_STATES_MEL_SPEC, N_MIX_MEL_SPEC, \
-    DATASET_ORIGINAL_PATH, TRAIN_SET_PATH_MFCCS, TRAIN_SET_PATH_LPCCS, \
+from preprocessing.constants import ACOUSTIC_MODEL_PATH_MFCCS, ACOUSTIC_MODEL_PATH_LPCCS, ACOUSTIC_MODEL_PATH_MEL_SPEC,\
+    TRAIN_PERCENTAGE, AUDIO_DATAFRAME_KEY, STATE_PROB_KEY, N_STATES_MFCCS, N_MIX_MFCCS, N_STATES_LPCCS, N_MIX_LPCCS, \
+    N_STATES_MEL_SPEC, N_MIX_MEL_SPEC, DATASET_ORIGINAL_PATH, TRAIN_SET_PATH_MFCCS, TRAIN_SET_PATH_LPCCS, \
     TRAIN_SET_PATH_MEL_SPEC, TEST_SET_PATH_MFCCS, TEST_SET_PATH_LPCCS, TEST_SET_PATH_MEL_SPEC
 from preprocessing.file_utils import speaker_audio_filenames, generate_or_load_speaker_ordered_dict, \
     SPEAKER_DIR_REGEX, AUDIO_REGEX
@@ -131,7 +131,8 @@ def _fill_speakers_audios_features(speaker_audio_features: dict, max_frames: int
     return speaker_audios_features_filled
 
 
-def _generate_speakers_acoustic_model(speakers_audios_features: dict, n_states: int, n_mix: int) -> (dict, dict):
+def _generate_speakers_acoustic_model(speakers_audios_features: dict, n_states: int, n_mix: int,
+                                      export_path: Optional[str] = None) -> (dict, dict):
     """
     Generates a trained GMM-HMM model representing the speaker's audio for each speaker's audio and stores it in a
     dictionary of speaker-acoustic_models pairs, a list containing the viterbi-calculated most likely state sequence
@@ -141,6 +142,8 @@ def _generate_speakers_acoustic_model(speakers_audios_features: dict, n_states: 
     :param speakers_audios_features:  A dictionary of speaker-MFCCs/LPCCs/Mel-spectrogram pairs.
     :param n_states: number of states to generate the acoustic model.
     :param n_mix: number of mixtures for each state.
+    :param export_path: path to save the acoustic model into (by default this is None, meaning no export file will be
+        generated).
     :return: A dictionary of speaker-acoustic_models pairs and a dictionary of speaker-acoustic_models_states pairs
     """
     acoustic_models = {}
@@ -161,8 +164,9 @@ def _generate_speakers_acoustic_model(speakers_audios_features: dict, n_states: 
             n_mix=n_mix
         )
 
-        path = f"{ACOUSTIC_MODEL_PATH}{speaker}.pkl"
-        save_acoustic_model(acoustic_models[speaker], path)
+        if export_path is not None:
+            path = f"{export_path}{speaker}.pkl"
+            save_acoustic_model(acoustic_models[speaker], path)
 
     return acoustic_models, acoustic_model_state_labels
 
@@ -331,17 +335,20 @@ def main():
     acoustic_models_mel_spectr_filled_circular, labels_mel_spectr_filled_circular = _generate_speakers_acoustic_model(
         speaker_audios_mel_spectrogram_filled_circular,
         n_states=N_STATES_MEL_SPEC,
-        n_mix=N_MIX_MEL_SPEC
+        n_mix=N_MIX_MEL_SPEC,
+        export_path=ACOUSTIC_MODEL_PATH_MEL_SPEC
     )
     acoustic_models_mfcc_filled_circular, labels_mfcc_filled_circular = _generate_speakers_acoustic_model(
         speaker_audios_mfcc_filled_circular,
         n_states=N_STATES_MFCCS,
-        n_mix=N_MIX_MFCCS
+        n_mix=N_MIX_MFCCS,
+        export_path=ACOUSTIC_MODEL_PATH_MFCCS
     )
     acoustic_models_lpcc_filled_circular, labels_lpcc_filled_circular = _generate_speakers_acoustic_model(
         speaker_audios_lpcc_filled_circular,
         n_states=N_STATES_LPCCS,
-        n_mix=N_MIX_LPCCS
+        n_mix=N_MIX_LPCCS,
+        export_path=ACOUSTIC_MODEL_PATH_LPCCS
     )
 
     # One-hot encode frame-level state labels as vectors

@@ -1,10 +1,10 @@
 from typing import final
-
 from keras.callbacks import EarlyStopping
-from keras.optimizer_v2.adadelta import Adadelta
+from keras.optimizers import Adadelta
 from matplotlib import pyplot
+from tensorflow import keras
 from models.autoencoder.recurrent_autoencoder import RecurrentAutoEncoder
-from training_utils import load_dataset, TRAIN_SET_PATH_MFCCS, TEST_SET_PATH_MFCCS, EarlyStoppingByLossVal
+from training_utils import load_dataset, TRAIN_SET_PATH_MFCCS, TEST_SET_PATH_MFCCS
 
 
 _VALIDATION_PERCENTAGE: final = 0.05
@@ -39,7 +39,7 @@ def main():
     )
     loss = 'mae'
     callbacks = [
-        EarlyStopping(monitor='loss', patience=10, min_delta=0.001, restore_best_weights=True)
+        EarlyStopping(monitor='loss', patience=50, min_delta=0.001, restore_best_weights=True)
     ]
     version = 1.0  # For easy saving of multiple model versions
 
@@ -59,6 +59,7 @@ def main():
     )
     model.summary(expand_nested=True)
     model.compile(optimizer=optimizer, loss=loss)
+    model = keras.models.load_model('fitted_autoencoder/autoencoder_cnn_750_epochs')
 
     # Train the model
     history = model.fit(

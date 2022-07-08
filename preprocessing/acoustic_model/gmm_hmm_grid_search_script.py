@@ -1,4 +1,4 @@
-from typing import final
+from typing import final, Optional
 from tqdm.auto import tqdm
 import numpy as np
 import pandas as pd
@@ -7,11 +7,12 @@ from preprocessing.features.mel import extract_mfccs, MFCC_NUM_DEFAULT, DERIVATI
 from gmmhmm import gmm_hmm_grid_search
 from preprocessing.constants import DATASET_ORIGINAL_PATH
 from preprocessing.file_utils import speaker_audio_filenames, SPEAKER_DIR_REGEX, AUDIO_REGEX
+from threading import Thread
 
 
-_RANDOM_SEED: final = 47
 _N_STATES_MAX_MFCCS: final = 20
-_N_MIX_MAX_MFCCS: final = 20
+_N_MIX_MAX_MFCCS: final = 15
+_N_JOBS: final = 4
 
 
 def _speakers_audios_mfccs_max_frames(speakers_audios_names: dict) -> (dict, int):
@@ -98,23 +99,98 @@ def _fill_speakers_audios_features(speaker_audio_features: dict, max_frames: int
     return speaker_audios_features_filled
 
 
-def _acoustic_model_grid_search(speakers_audios_features: dict, n_states_max: int, n_mix_max: int) -> pd.DataFrame:
+def _acoustic_model_grid_search_multithread(speakers_audios_features: dict, n_states_max: int, n_mix_max: int,
+                                            n_jobs: int = 1) -> pd.DataFrame:
+    """
+    Executes grid search to find best parameters for each speaker acoustic model with multithreading.
+
+    :param speakers_audios_features:  A dictionary of speaker-MFCCs/LPCCs/Mel-spectrogram pairs.
+    :param n_states_max: number of states to generate the acoustic model.
+    :param n_mix_max: number of mixtures for each state.
+    :param n_jobs: number of threads to create to faster the grid search (by default, 1 is used).
+    :return: a pandas DataFrame containing best n_states/n_mix combination for acoustic model alongside best model
+        score.
+    :raises ValueError: if n_jobs <= 0.
+    """
+    if n_jobs <= 0:
+        raise ValueError("n_jobs must be strictly positive")
+
+    if n_jobs > 1:
+        speakers = list(speakers_audios_features.keys())
+        n_speaker_per_job = len(speakers) // n_jobs
+        threads = []
+        results = [None for _ in range(0, n_jobs)]
+
+        # Create jobs from 1 to n_jobs-1 splitting
+        for i in range(0, n_jobs - 1):
+            target_speakers = speakers[i * n_speaker_per_job:i * n_speaker_per_job + n_speaker_per_job]
+            thread = Thread(
+                target=__acoustic_model_grid_search_single_thread,
+                args=(speakers_audios_features, n_states_max, n_mix_max, target_speakers, i, results),
+                name=f"grid_search_thread{i}"
+            )
+            threads.append(thread)
+
+        # Create last job
+        target_speakers = speakers[(n_jobs - 1) * n_speaker_per_job:]
+        last_thread = Thread(
+            target=__acoustic_model_grid_search_single_thread,
+            args=(speakers_audios_features, n_states_max, n_mix_max, target_speakers),
+            name=f"grid_search_thread{n_jobs - 1}"
+        )
+        threads.append(last_thread)
+
+        # Execute threads
+        for i in range(n_jobs):
+            threads[i].start()
+
+        # Wait end of execution
+        for i in range(n_jobs):
+            threads[i].join()
+
+        # Combine results
+        final_result = results[0]
+        for i in range(1, n_jobs):
+            final_result = pd.concat([final_result, results[i]], axis=0)
+
+        return final_result
+
+    else:
+        return __acoustic_model_grid_search_single_thread(speakers_audios_features, n_states_max, n_mix_max)
+
+
+def __acoustic_model_grid_search_single_thread(speakers_audios_features: dict, n_states_max: int, n_mix_max: int,
+                                               target_speakers: Optional[list[str]] = None, index: Optional[int] = None,
+                                               results: Optional[list[pd.DataFrame]] = None) -> pd.DataFrame:
     """
     Executes grid search to find best parameters for each speaker acoustic model.
 
     :param speakers_audios_features:  A dictionary of speaker-MFCCs/LPCCs/Mel-spectrogram pairs.
     :param n_states_max: number of states to generate the acoustic model.
     :param n_mix_max: number of mixtures for each state.
+    :param target_speakers: a list of speaker identifiers to take into account when executing acoustic model grid
+        search (if given None, all speakers shall be taken into account).
+    :param results: list of results to store the results (for multithreading purposes).
+    :param index: index of the results list to store the result into (for multithreading purposes).
     :return: a pandas DataFrame containing best n_states/n_mix combination for acoustic model alongside best model
         score.
+    :raises ValueError: if index is out of bounds of results, or if it is None and results is not.
     """
+    if results is not None and index is None:
+        raise ValueError("index cannot be None while passing results argument")
+    if index is not None:
+        if results is not None and (index < 0 or index >= len(results)):
+            raise ValueError(f"index must be between {0} and {len(results)} if given")
+
+    if target_speakers is None:
+        target_speakers = list(speakers_audios_features.keys())
 
     desc = f"Executing grid search for speaker-acoustic_models" \
            f" best params with n_states_max: {n_states_max}, n_mix: {n_mix_max}"
     best_params = pd.DataFrame(columns=["n_states", "n_mix", "score"])
 
-    # For each speaker
-    for speaker in tqdm(speakers_audios_features, desc=desc):
+    # For each speaker to take into account
+    for speaker in tqdm(target_speakers, desc=desc):
         print(f"\nCurrent speaker: {str(speaker)}")
         speaker_audios = speakers_audios_features[speaker]
 
@@ -131,11 +207,13 @@ def _acoustic_model_grid_search(speakers_audios_features: dict, n_states_max: in
         # Store the found params and score to pandas DataFrame
         best_params.loc[speaker] = [best_speaker_params["n_states"], best_speaker_params["n_mix"], score]
 
+    if results is not None:
+        results[index] = best_params
+
     return best_params
 
 
 def main():
-
     # Get audio paths, grouped by speaker
     speakers_audios_names = speaker_audio_filenames(
         path=DATASET_ORIGINAL_PATH,
@@ -155,20 +233,21 @@ def main():
     )
 
     # Grid search for acoustic models
-    best_params = _acoustic_model_grid_search(
+    best_params = _acoustic_model_grid_search_multithread(
         speaker_audios_mfcc_filled_circular,
         n_states_max=_N_STATES_MAX_MFCCS,
-        n_mix_max=_N_MIX_MAX_MFCCS
+        n_mix_max=_N_MIX_MAX_MFCCS,
+        n_jobs=_N_JOBS
     )
 
     print("n_mix quantiles: ")
-    print(np.quantiles(best_params["n_mix"].to_numpy(), [0, 0.25, 0.5, 0.75, 1]))
+    print(np.quantile(best_params["n_mix"].to_numpy(), [0, 0.25, 0.5, 0.75, 1]))
 
     print("n_states quantiles: ")
-    print(np.quantiles(best_params["n_states"].to_numpy(), [0, 0.25, 0.5, 0.75, 1]))
+    print(np.quantile(best_params["n_states"].to_numpy(), [0, 0.25, 0.5, 0.75, 1]))
 
     print("score quantiles: ")
-    print(np.quantiles(best_params["score"].to_numpy(), [0, 0.25, 0.5, 0.75, 1]))
+    print(np.quantile(best_params["score"].to_numpy(), [0, 0.25, 0.5, 0.75, 1]))
 
 
 if __name__ == "__main__":
