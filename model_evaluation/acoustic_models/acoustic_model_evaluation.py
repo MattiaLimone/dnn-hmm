@@ -11,7 +11,7 @@ from training.training_utils import load_dataset, one_hot_labels_to_integer_labe
 
 _RANDOM_SEED: final = 47
 _N_STATES_MAX_MFCCS: final = 20
-_N_MIX_MAX_MFCCS: final = 20
+_N_MIX_MAX_MFCCS: final = 15
 
 
 def _load_speakers_acoustic_models(speakers: list[str]) -> dict[str, GMMHMM]:
@@ -81,7 +81,7 @@ def main():
     # Load acoustic models
     acoustic_models = _load_speakers_acoustic_models(list(speaker_indexes.keys()))
 
-    # Check validity of saved lavels
+    # Check validity of saved labels
     _check_labels(speaker_indexes, acoustic_models, full_dataset_mfccs)
 
 
