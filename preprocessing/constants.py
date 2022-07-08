@@ -2,8 +2,8 @@ from typing import final
 
 # Acoustic model-related constants
 TRAIN_PERCENTAGE: final = 0.8
-N_STATES_MFCCS: final = 5
-N_MIX_MFCCS: final = 4
+N_STATES_MFCCS: final = 8  # best according to grid search
+N_MIX_MFCCS: final = 3  # best according to grid search
 N_STATES_LPCCS: final = 4
 N_MIX_LPCCS: final = 2
 N_STATES_MEL_SPEC: final = 3

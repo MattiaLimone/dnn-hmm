@@ -12,7 +12,7 @@ from acoustic_model.gmmhmm import generate_acoustic_model, save_acoustic_model
 from preprocessing.constants import ACOUSTIC_MODEL_PATH_MFCCS, ACOUSTIC_MODEL_PATH_LPCCS, ACOUSTIC_MODEL_PATH_MEL_SPEC,\
     TRAIN_PERCENTAGE, AUDIO_DATAFRAME_KEY, STATE_PROB_KEY, N_STATES_MFCCS, N_MIX_MFCCS, N_STATES_LPCCS, N_MIX_LPCCS, \
     N_STATES_MEL_SPEC, N_MIX_MEL_SPEC, DATASET_ORIGINAL_PATH, TRAIN_SET_PATH_MFCCS, TRAIN_SET_PATH_LPCCS, \
-    TRAIN_SET_PATH_MEL_SPEC, TEST_SET_PATH_MFCCS, TEST_SET_PATH_LPCCS, TEST_SET_PATH_MEL_SPEC
+    TRAIN_SET_PATH_MEL_SPEC, TEST_SET_PATH_MFCCS, TEST_SET_PATH_LPCCS, TEST_SET_PATH_MEL_SPEC, AUDIO_PER_SPEAKER
 from preprocessing.file_utils import speaker_audio_filenames, generate_or_load_speaker_ordered_dict, \
     SPEAKER_DIR_REGEX, AUDIO_REGEX
 
@@ -294,6 +294,55 @@ def _generate_output_dataframe(audios_feature_tensor: np.ndarray, one_hot_encode
     return df
 
 
+def _train_test_split(feature_dataframe: pd.DataFrame, train_percentage: float, audios_per_speaker: int) \
+        -> (pd.DataFrame, pd.DataFrame):
+    """
+    Splits feature dataframe into train and test set.
+
+    :param feature_dataframe: a pandas DataFrame object with 2 columns: the first one containing the
+        audios_feature_tensor entries on each row, and the second one containing one_hot_encoded_labels entries on each
+        row.
+    :param audios_per_speaker: number of audios per speaker.
+    :param train_percentage: percentage of samples to put in the train test.
+    :return: train/test-splitted feature dataframe, where train set contains percentage*audios_per_speaker audios from
+        each speaker, while the test set (1-train_percentage)*audios_per_speaker audios from each speaker.
+    """
+    columns = list(feature_dataframe.columns)
+    train = pd.DataFrame(columns=columns)
+    test = pd.DataFrame(columns=columns)
+
+    # Convert dataframes into object type
+    for column in columns:
+        train[column] = train[column].astype(object)
+        test[column] = test[column].astype(object)
+
+    n_speaker = feature_dataframe.shape[0] // audios_per_speaker  # must give integer value
+
+    # For each speaker
+    for i in tqdm(range(0, n_speaker), desc="Executing train/test split"):
+
+        # Get speaker audios
+        speaker_audios = feature_dataframe.loc[i*audios_per_speaker:i*audios_per_speaker + audios_per_speaker]
+
+        # Split speaker audios in train/test set
+        train_speaker, test_speaker = skl.model_selection.train_test_split(
+            speaker_audios,
+            train_size=train_percentage,
+            shuffle=True,
+            random_state=_RANDOM_SEED
+        )
+
+        # Concatenate speaker train/test sets to global train/test sets
+        train = pd.concat([train, train_speaker], axis=0)
+        test = pd.concat([test, test_speaker], axis=0)
+
+    # Shuffle the generated train/test sets
+    train = skl.utils.shuffle(train, random_state=_RANDOM_SEED)
+    test = skl.utils.shuffle(test, random_state=_RANDOM_SEED)
+
+    return train, test
+
+
 def main():
 
     # Get audio paths, grouped by speaker
@@ -397,23 +446,20 @@ def main():
     )
 
     # Split generated dataframes into train and test sets
-    df_mfcc_filled_circular_train, df_mfcc_filled_circular_test = skl.model_selection.train_test_split(
+    df_mfcc_filled_circular_train, df_mfcc_filled_circular_test = _train_test_split(
         df_mfcc_filled_circular,
-        train_size=TRAIN_PERCENTAGE,
-        shuffle=True,
-        random_state=_RANDOM_SEED
+        train_percentage=TRAIN_PERCENTAGE,
+        audios_per_speaker=AUDIO_PER_SPEAKER
     )
-    df_lpcc_filled_circular_train, df_lpcc_filled_circular_test = skl.model_selection.train_test_split(
+    df_lpcc_filled_circular_train, df_lpcc_filled_circular_test = _train_test_split(
         df_lpcc_filled_circular,
-        train_size=TRAIN_PERCENTAGE,
-        shuffle=True,
-        random_state=_RANDOM_SEED
+        train_percentage=TRAIN_PERCENTAGE,
+        audios_per_speaker=AUDIO_PER_SPEAKER
     )
-    df_mel_spectr_filled_circular_train, df_mel_spectr_filled_circular_test = skl.model_selection.train_test_split(
+    df_mel_spectr_filled_circular_train, df_mel_spectr_filled_circular_test = _train_test_split(
         df_mel_spectrogram_filled_circular,
-        train_size=TRAIN_PERCENTAGE,
-        shuffle=True,
-        random_state=_RANDOM_SEED
+        train_percentage=TRAIN_PERCENTAGE,
+        audios_per_speaker=AUDIO_PER_SPEAKER
     )
 
     # Save extracted features and labels to pickle files in a suitable format for model training
