@@ -9,7 +9,7 @@ from preprocessing.constants import DATASET_ORIGINAL_PATH
 from preprocessing.file_utils import speaker_audio_filenames, SPEAKER_DIR_REGEX, AUDIO_REGEX
 from threading import Thread
 
-_RANDOM_SEED: final = 47
+
 _N_STATES_MAX_MFCCS: final = 20
 _N_MIX_MAX_MFCCS: final = 15
 _N_JOBS: final = 4
