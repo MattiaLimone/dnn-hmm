@@ -7,7 +7,7 @@ from preprocessing.features.mel import extract_mfccs, MFCC_NUM_DEFAULT, DERIVATI
 from gmmhmm import gmm_hmm_grid_search
 from preprocessing.constants import DATASET_ORIGINAL_PATH
 from preprocessing.file_utils import speaker_audio_filenames, SPEAKER_DIR_REGEX, AUDIO_REGEX
-from threading import Thread
+from multiprocessing import Process as Thread
 
 
 _N_STATES_MAX_MFCCS: final = 20
