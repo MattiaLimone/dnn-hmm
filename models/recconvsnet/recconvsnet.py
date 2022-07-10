@@ -1,7 +1,7 @@
 from typing import Optional, Any, Union, final
 from keras.layers import RNN, BatchNormalization, LayerNormalization, Conv1D, TimeDistributed, Concatenate, Dense, \
     Softmax, RepeatVector, Flatten, Layer, InputLayer, Dropout
-from keras.layers.pooling import Pooling1D
+from tensorflow.python.keras.layers.pooling import Pooling1D
 from keras.models import Model, Sequential
 
 
@@ -195,9 +195,24 @@ class RecConv1DSiameseNet(Model):
         if dropout_dense > 0:
             dense0 = TimeDistributed(
                 Dropout(rate=dropout_dense),
-                name="tail_dropout_dense"
+                name="tail_dropout_dense_0"
             )(dense0)
         dense1 = TimeDistributed(
+            Dense(
+                units=tail_dense_units,
+                activation=tail_dense_activation,
+                kernel_regularizer=kernel_regularizer_dense,
+                bias_regularizer=bias_regularizer_dense,
+                activity_regularizer=activity_regularizer_dense,
+            ),
+            name="tail_dense1"
+        )(dense0)
+        if dropout_dense > 0:
+            dense1 = TimeDistributed(
+                Dropout(rate=dropout_dense),
+                name="tail_dropout_dense_1"
+            )(dense1)
+        dense2 = TimeDistributed(
             Dense(
                 units=output_dim,
                 kernel_regularizer=kernel_regularizer_softmax,
@@ -205,11 +220,11 @@ class RecConv1DSiameseNet(Model):
                 activity_regularizer=activity_regularizer_softmax
             ),
             name="tail_output_dense"
-        )(dense0)
+        )(dense1)
         output = TimeDistributed(
             Softmax(),
             name="tail_output_softmax"
-        )(dense1)
+        )(dense2)
         tail = Model(
             inputs=[self.__recurrent_branch.output, self.__conv_branch.output],
             outputs=output,

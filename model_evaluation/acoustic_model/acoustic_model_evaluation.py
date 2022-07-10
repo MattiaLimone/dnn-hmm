@@ -55,6 +55,7 @@ def _check_labels(speaker_indexes: dict[str, int], acoustic_models: dict[str, GM
             # state index with global state index
             for i in range(0, len(raw_states)):
                 global_state_label = (N_STATES_MFCCS * speaker_indexes[speaker]) + raw_states[i]
+                breakpoint()
                 print(f"Dataframe content: {labels[i]}")
                 print(f"Acoustic model prediction: {global_state_label}")
                 if global_state_label != labels[i]:
