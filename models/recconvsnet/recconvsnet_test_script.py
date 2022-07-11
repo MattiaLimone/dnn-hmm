@@ -23,7 +23,7 @@ def main():
     conv2 = Conv1D(filters=256, kernel_size=3, strides=1, padding='same', name="conv2")
     bn2 = BatchNormalization(name="conv_branch_batch_normalization2")
     avg_pool2 = AvgPool1D(pool_size=2, name="avg_pool2", padding='same')
-    conv_branch_flatten = FlattenDenseLayer(output_dim=512, name="conv_branch_flatten-dense")
+    conv_branch_flatten = FlattenDenseLayer(units=512, name="conv_branch_flatten-dense")
 
     model = RecConv1DSiameseNet(
         rec_branch_layers=[lstm0, lstm1, lstm2, bnlstm],
