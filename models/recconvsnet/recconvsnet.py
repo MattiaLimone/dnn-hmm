@@ -63,7 +63,7 @@ class RecConv1DSiameseNet(Model):
         :param bias_regularizer_dense: bias regularizer for the last layer.
         :param activity_regularizer_dense: activity regularizer for the last layer.
         :raises ValueError: if rec_branch_layers or conv_branch_layers contain any InputLayer, if input shapes are
-            incorrect or if given tail_dense_units/output_dim are invalid.
+            incorrect or if given tail_dense_units/units are invalid.
         """
 
         if len(input_shape_rec_branch) < 3 or len(input_shape_conv_branch) < 3:
@@ -71,7 +71,7 @@ class RecConv1DSiameseNet(Model):
         if tail_dense_units <= 0:
             raise ValueError("tail_dense_units must be positive")
         if output_dim <= 0:
-            raise ValueError("output_dim must be positive")
+            raise ValueError("units must be positive")
 
         super().__init__()
 

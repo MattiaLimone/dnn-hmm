@@ -2,6 +2,7 @@ import numpy as np
 from keras.models import Sequential, Model
 from keras.layers import Dense, TimeDistributed, Layer, InputLayer, BatchNormalization, Flatten, Dropout, Reshape
 from typing import final, Optional, Union, Any, Iterable
+import tensorflow as tf
 
 
 ENCODER_MODEL_NAME: final = "Encoder"
@@ -10,20 +11,21 @@ _DECODER_LAYER_DEFAULT_POSTFIX = "_decoder"
 _RANDOM_SEED: final = None
 
 
+@tf.keras.utils.register_keras_serializable(package='autoencoder')
 class FlattenDenseLayer(Layer):
     """
     This class represents a simple neural network layer composed of a Flatten layer followed by fully-connected (Dense)
     layer.
     """
 
-    def __init__(self, output_dim: int, flatten_data_format: Optional[str] = None, name: Optional[str] = None,
+    def __init__(self, units: int, flatten_data_format: Optional[str] = None, name: Optional[str] = None,
                  activation=None, use_bias: bool = True, kernel_initializer: str = 'glorot_uniform',
                  bias_initializer: str = 'zeros', dropout: float = 0.0, kernel_regularizer=None, bias_regularizer=None,
                  activity_regularizer=None, kernel_constraint=None, bias_constraint=None, **kwargs):
         """
         Constructor. Instantiates a Flatten layer followed by a Dense layer that represents the bottleneck.
 
-        :param output_dim: An integer. Dimension of the output.
+        :param units: An integer. Dimension of the output.
         :param flatten_data_format: a string, one of channels_last (default) or channels_first. The ordering of the
             dimensions in the inputs. channels_last corresponds to inputs with shape (batch, ..., channels) while
             channels_first corresponds to inputs with shape (batch, channels, ...). It defaults to the image_data_format
@@ -47,7 +49,7 @@ class FlattenDenseLayer(Layer):
 
         self._flatten_layer = Flatten(data_format=flatten_data_format)
         self._dense = Dense(
-            units=output_dim,
+            units=units,
             activation=activation,
             use_bias=use_bias,
             kernel_initializer=kernel_initializer,
@@ -109,13 +111,23 @@ class FlattenDenseLayer(Layer):
         """
         return self._dense.units
 
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            'units': self.units,
+            "flatten_data_format": self._flatten_layer.data_format,
+            "dropout": self._dropout.rate,
+            **self._dense.get_config()
+        })
+        return config
+
 
 class AutoEncoder(Model):
     """
     This class represents a generic autoencoder model, that can be constructed with any keras layer.
     """
 
-    def __init__(self, input_shape: tuple[int, ...], encoder_layers: Iterable[Layer], bottleneck: Layer,
+    def __init__(self, input_shape: tuple[int, ...], encoder_layers: list[Layer], bottleneck: Optional[Layer] = None,
                  decoder_layers: Optional[Iterable[Layer]] = None, add_last_dense_block: bool = True,
                  do_batch_norm: bool = False, outputs_sequences: bool = False, last_layer_activation=None):
         """
@@ -126,7 +138,8 @@ class AutoEncoder(Model):
             dim1, ..., dimN).
         :param encoder_layers: an iterable containing the encoder layers (no InputLayer must be given, or ValueError
                                will be raised).
-        :param bottleneck: bottleneck layer which outputs the representation of the input vector in the latent space.
+        :param bottleneck: bottleneck layer which outputs the representation of the input vector in the latent space
+            (if not given explicitly, last encoder layer will be used as bottleneck).
         :param decoder_layers: an iterable containing the decoder layers (no InputLayer must be given, or ValueError
                                will be raised); by default, this is None since the autoencoder structure is assumed to
                                be symmetrical (hence encoder layers are copied in reverse order in decoder layers).
@@ -161,8 +174,10 @@ class AutoEncoder(Model):
 
                 self._encoder.add(layer)
 
-            # Add bottleneck
-            self._encoder.add(bottleneck)
+            # Add bottleneck if given
+            if bottleneck is not None:
+                encoder_layers.append(bottleneck)
+                self._encoder.add(bottleneck)
 
             # Add all given layers in reverse order to the decoder model
             reverse_layers = list(encoder_layers)
@@ -186,8 +201,9 @@ class AutoEncoder(Model):
 
                 self._encoder.add(layer)
 
-            # Add bottleneck
-            self._encoder.add(bottleneck)
+            # Add bottleneck if given
+            if bottleneck is not None:
+                self._encoder.add(bottleneck)
 
             # Add decoder layers
             for layer in decoder_layers:
@@ -196,6 +212,9 @@ class AutoEncoder(Model):
                 if isinstance(layer, InputLayer):
                     raise ValueError("Given layers must not be InputLayer instances")
                 self._decoder.add(layer)
+
+        if bottleneck is None:
+            bottleneck = encoder_layers[-1]
 
         # Compute encoder output shape and decoder (temporary) output shape (batch_size, other dimensions...)
         encoder_output_shape = self._encoder.compute_output_shape(input_shape)
@@ -264,12 +283,28 @@ class AutoEncoder(Model):
         return decoded
 
     def get_config(self) -> dict[str, Union[None, list[Optional[dict[str, Any]]], tuple, int]]:
-        config_dict = {
-            "latent_space_dim": self._latent_space_dim,
-            **self._encoder.get_config(),
-            **self._decoder.get_config()
+        config = {
+            "input_shape": self._input_shape,
+            'encoder_config': self._encoder.get_config(),
+            'decoder_config': self._decoder.get_config()
         }
-        return config_dict
+        return config
+
+    @classmethod
+    def from_config(cls, config, custom_objects=None):
+        encoder = Sequential.from_config(config.get('encoder_config'), custom_objects=custom_objects)
+        decoder = Sequential.from_config(config.get('decoder_config'), custom_objects=custom_objects)
+        input_shape = config.get('input_shape')
+        return cls(
+            input_shape=input_shape,
+            encoder_layers=encoder.layers,
+            bottleneck=None,
+            decoder_layers=decoder.layers,
+            add_last_dense_block=False,
+            do_batch_norm=False,
+            outputs_sequences=False,
+            last_layer_activation=None
+        )
 
     def fit(self, x=None, y=None, batch_size: Optional[int] = None, epochs: int = 1, verbose: str = 'auto',
             callbacks=None, validation_split: float = 0.0, validation_data=None, shuffle: bool = True,

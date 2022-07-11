@@ -1,9 +1,11 @@
-from autoencoder import AutoEncoder
-from keras.layers import LSTM
+from keras import Sequential
+from autoencoder import AutoEncoder, FlattenDenseLayer
+from keras.layers import LSTM, Dense
 
 
 def main():
 
+    input_shape = (10, 150, 39)
     lstm0 = LSTM(name="lstm_encoder1", units=512, activation='tanh', return_sequences=True)
     lstm1 = LSTM(name="lstm_encoder2", units=256, activation='tanh', return_sequences=True)
     lstm2 = LSTM(name="lstm_encoder3", units=128, activation='tanh', return_sequences=True)
@@ -18,12 +20,31 @@ def main():
         bottleneck=lstm3,
         decoder_layers=decoder_layers,
         outputs_sequences=True,
-        input_shape=(10, 150, 39),
+        input_shape=input_shape,
     )
-    # model.build()
-    model.summary()
+    model.summary(expand_nested=True)
 
-    # TODO: add model training
+    # get_config() test
+    config = model.get_config()
+    model = AutoEncoder.from_config(config)
+    model.summary(expand_nested=True)
+
+    # FlattenDenseLayer get_config() test
+    flatten_dense = FlattenDenseLayer(units=10, dropout=0.5)
+    model = Sequential()
+    model.add(LSTM(units=50, activation='tanh', return_sequences=True))
+    model.add(LSTM(units=25, activation='tanh', return_sequences=True))
+    model.add(flatten_dense)
+    model.build(input_shape)
+    model.summary(expand_nested=True)
+
+    flatten_dense = FlattenDenseLayer.from_config(flatten_dense.get_config())
+    model = Sequential()
+    model.add(LSTM(units=50, activation='tanh', return_sequences=True))
+    model.add(LSTM(units=25, activation='tanh', return_sequences=True))
+    model.add(flatten_dense)
+    model.build(input_shape)
+    model.summary(expand_nested=True)
 
 
 if __name__ == "__main__":
