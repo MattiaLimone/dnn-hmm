@@ -1,5 +1,4 @@
 from keras.layers import LSTM, GRU
-
 from models.autoencoder.recurrent_autoencoder import RecurrentAutoEncoder, LSTMRepeatVector, GRURepeatVector
 from keras import regularizers, Sequential
 
