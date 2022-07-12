@@ -1,5 +1,5 @@
 from typing import Iterable, final, Optional, Union, Any
-from autoencoder import AutoEncoder
+from models.autoencoder.autoencoder import AutoEncoder
 from keras.layers import GRU, LSTM, RepeatVector, Layer
 import tensorflow as tf
 

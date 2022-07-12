@@ -31,10 +31,16 @@ def main():
         input_shape_rec_branch=input_shape_lstm_branch,
         input_shape_conv_branch=input_shape_conv_branch,
         tail_dense_units=1024,
+        dropout_dense=0.5,
         output_dim=output_dim,
         tail_dense_activation='relu',
         add_repeat_vector_conv_branch=True
     )
+    model.summary()
+
+    # get_config() test
+    config = model.get_config()
+    model = RecConv1DSiameseNet.from_config(config)
     model.summary()
 
 
