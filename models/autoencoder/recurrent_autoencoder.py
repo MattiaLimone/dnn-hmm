@@ -1,8 +1,10 @@
-from typing import Iterable, final, Optional, Union
+from typing import Iterable, final, Optional, Union, Any
 from autoencoder import AutoEncoder
 from keras.layers import GRU, LSTM, RepeatVector, Layer
+import tensorflow as tf
 
 
+@tf.keras.utils.register_keras_serializable(package='recurrent_autoencoder')
 class LSTMRepeatVector(Layer):
     """
     This class represents a simple neural network layer composed of an LSTM layer and a RepeatVector layer.
@@ -44,7 +46,7 @@ class LSTMRepeatVector(Layer):
           If True, add 1 to the bias of the forget gate at initialization.
           Setting it to true will also force `bias_initializer="zeros"`.
           This is recommended in [Jozefowicz et al., 2015](
-            http://www.jmlr.org/proceedings/papers/v37/jozefowicz15.pdf).
+            https://www.jmlr.org/proceedings/papers/v37/jozefowicz15.pdf).
         kernel_regularizer: Regularizer function applied to
           the `kernel` weights matrix.
         recurrent_regularizer: Regularizer function applied to
@@ -167,6 +169,21 @@ class LSTMRepeatVector(Layer):
         lstm_output_shape = self.__lstm.compute_output_shape(input_shape)
         return self.__repeat_vector.compute_output_shape(lstm_output_shape)
 
+    def get_config(self):
+        config = super(LSTMRepeatVector, self).get_config()
+        repeat_vector_timesteps = self.__repeat_vector.n
+        repeat_vector_name = self.__repeat_vector.name
+        rec_name = self.__lstm.name
+        rec_config = self.__lstm.get_config()
+        del rec_config['name']
+        config.update({
+            "repeat_vector_timesteps": repeat_vector_timesteps,
+            "repeat_vector_name": repeat_vector_name,
+            "rec_name": rec_name,
+            **rec_config
+        })
+        return config
+
     @property
     def units(self) -> int:
         """
@@ -177,6 +194,7 @@ class LSTMRepeatVector(Layer):
         return self.__lstm.units
 
 
+@tf.keras.utils.register_keras_serializable(package='recurrent_autoencoder')
 class GRURepeatVector(Layer):
     """
     This class represents a simple neural network layer composed of an LSTM layer and a RepeatVector layer.
@@ -186,7 +204,7 @@ class GRURepeatVector(Layer):
                  bias_initializer='zeros', kernel_regularizer=None, recurrent_regularizer=None, bias_regularizer=None,
                  activity_regularizer=None, kernel_constraint=None, recurrent_constraint=None, bias_constraint=None,
                  dropout: float = 0., recurrent_dropout: float = 0., return_state: bool = False,
-                 go_backwards: bool = False, stateful: bool = False, unroll: bool = False, reset_after: bool = False,
+                 go_backwards: bool = False, stateful: bool = False, unroll: bool = False, reset_after: bool = True,
                  name: Optional[str] = None, rec_name: Optional[str] = None, repeat_vector_name: Optional[str] = None,
                  **kwargs):
         """Gated Recurrent Unit - Cho et al. 2014,  with a RepeatVector layer stacked on top.
@@ -347,6 +365,21 @@ class GRURepeatVector(Layer):
         gru_output_shape = self.__gru.compute_output_shape(input_shape)
         return self.__repeat_vector.compute_output_shape(gru_output_shape)
 
+    def get_config(self):
+        config = super(GRURepeatVector, self).get_config()
+        repeat_vector_timesteps = self.__repeat_vector.n
+        repeat_vector_name = self.__repeat_vector.name
+        rec_name = self.__gru.name
+        rec_config = self.__gru.get_config()
+        del rec_config['name']
+        config.update({
+            "repeat_vector_timesteps": repeat_vector_timesteps,
+            "repeat_vector_name": repeat_vector_name,
+            "rec_name": rec_name,
+            **rec_config
+        })
+        return config
+
     @property
     def units(self) -> int:
         """
@@ -374,14 +407,18 @@ class RecurrentAutoEncoder(AutoEncoder):
     """
 
     def __init__(self, input_shape: tuple[int, ...], unit_types: list[str], recurrent_units: list[int],
-                 latent_space_dim: int, activations: Optional[Union[str, list[str]]] = 'relu',
+                 latent_space_dim: int, activations: Optional[Union[str, list[str]]] = 'tanh',
                  recurrent_activations: Optional[Union[str, list[str]]] = 'sigmoid',
                  bottleneck_unit_type: str = "LSTM", bottleneck_returns_sequences: bool = False,
-                 bottleneck_activation: str = 'relu', bottleneck_recurrent_activation: str = 'sigmoid',
-                 bottleneck_activity_regularizer=None, recurrent_units_dropout: float = 0.0,
-                 recurrent_dropout: float = 0.0, recurrent_initializer: str = 'glorot_uniform',
-                 kernel_initializer: str = 'orthogonal', bias_initializer: str = 'zeros', recurrent_regularizer=None,
-                 kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, go_backwards: bool = False,
+                 bottleneck_activation: str = 'tanh', bottleneck_recurrent_activation: str = 'sigmoid',
+                 bottleneck_recurrent_regularizer=None, bottleneck_kernel_regularizer=None,
+                 bottleneck_bias_regularizer=None, bottleneck_activity_regularizer=None,
+                 recurrent_units_dropout: float = 0.0, recurrent_dropout: float = 0.0,
+                 recurrent_initializer: str = 'glorot_uniform', kernel_initializer: str = 'orthogonal',
+                 bias_initializer: str = 'zeros', recurrent_regularizer: Optional[list[None, Any]] = None,
+                 kernel_regularizer: Optional[list[None, Any]] = None,
+                 bias_regularizer: Optional[list[None, Any]] = None,
+                 activity_regularizer: Optional[list[None, Any]] = None, go_backwards: bool = False,
                  do_batch_norm: bool = True):
         """
         Constructor. Most of the parameters used in keras LSTM/GRU layers can be passed to this method.
@@ -401,6 +438,12 @@ class RecurrentAutoEncoder(AutoEncoder):
         :param bottleneck_activation: a string indicating the activations functions to use in bottleneck layer output.
             Default: ReLU (relu). If None is given, no activation is applied to the corresponding layer (ie. "linear"
             activation: a(x) = x).
+        :param bottleneck_recurrent_regularizer: recurrent kernel regularizer for the bottleneck layer. Useful to make
+            the autoencoder sparse (by default, no regularizer is used).
+        :param bottleneck_kernel_regularizer: kernel regularizer for the bottleneck layer. Useful to make
+            the autoencoder sparse (by default, no regularizer is used).
+        :param bottleneck_bias_regularizer: bias regularizer for the bottleneck layer. Useful to make
+            the autoencoder sparse (by default, no regularizer is used).
         :param bottleneck_activity_regularizer: activity regularizer for the bottleneck layer. Useful to make the
             autoencoder sparse (by default, no regularizer is used).
         :param recurrent_activations: a string indicating the activations functions to use in bottleneck layer output.
@@ -415,11 +458,16 @@ class RecurrentAutoEncoder(AutoEncoder):
         :param kernel_initializer: Initializer for the kernel weights matrix of each layer, used for the linear
             transformation of the inputs. Default: glorot_uniform.
         :param bias_initializer: Initializer for the bias vector. Default: zeros.
-        :param recurrent_regularizer: Regularizer function applied to the recurrent_kernel weights matrix. Default:
+        :param recurrent_regularizer: List of regularizer functions applied to the recurrent_kernel weights matrix of
+            the decoder layers, from the last to the first (a list of None and regularizer functions can be given
+            too). Default: None.
+        :param kernel_regularizer: List of regularizer functions applied to the kernel weights matrix of the decoder
+            layers, from the last to the first (a list of None and regularizer functions can be given too). Default:
             None.
-        :param kernel_regularizer: Regularizer function applied to the kernel weights matrix. Default: None.
-        :param bias_regularizer: Regularizer function applied to the bias vector. Default: None.
-        :param activity_regularizer: Regularizer function applied to the output of the layer (its "activation").
+        :param bias_regularizer: List of regularizer functions applied to the bias vector of the decoder layers, from
+            the last to the first (a list of None and regularizer functions can be given too). Default: None.
+        :param activity_regularizer: List of regularizer functions applied to the output of the decoder layers (their
+            "activation"), , from the last to the first; a list of None and regularizer functions can be given too.
             Default: None.
         :param go_backwards: Boolean (default False). If True, process the input sequence backwards and return the
             reversed sequence.
@@ -441,6 +489,22 @@ class RecurrentAutoEncoder(AutoEncoder):
             raise ValueError('Invalid value for argument `unit_types` or `recurrent_units`. Same dimension expected.'
                              f'\nReceived len(unit_types)={len(unit_types)}.'
                              f'\nReceived len(recurrent_units)={len(recurrent_units)}.')
+        if recurrent_regularizer is not None and len(recurrent_regularizer) != len(unit_types):
+            raise ValueError('Invalid value for argument `recurrent_regularizer`. Same dimension as `unit_types` '
+                             'expected if given not None.' f'\nReceived len(unit_types)={len(unit_types)}.'
+                             f'\nReceived len(recurrent_regularizer)={len(recurrent_regularizer)}.')
+        if kernel_regularizer is not None and len(kernel_regularizer) != len(unit_types):
+            raise ValueError('Invalid value for argument `kernel_regularizer`. Same dimension as `unit_types` '
+                             'expected if given not None.' f'\nReceived len(unit_types)={len(unit_types)}.'
+                             f'\nReceived len(kernel_regularizer)={len(kernel_regularizer)}.')
+        if bias_regularizer is not None and len(bias_regularizer) != len(unit_types):
+            raise ValueError('Invalid value for argument `bias_regularizer`. Same dimension as `unit_types` '
+                             'expected if given not None.' f'\nReceived len(unit_types)={len(unit_types)}.'
+                             f'\nReceived len(bias_regularizer)={len(bias_regularizer)}.')
+        if activity_regularizer is not None and len(activity_regularizer) != len(unit_types):
+            raise ValueError('Invalid value for argument `activity_regularizer`. Same dimension as `unit_types` '
+                             'expected if given not None.' f'\nReceived len(unit_types)={len(unit_types)}.'
+                             f'\nReceived len(activity_regularizer)={len(activity_regularizer)}.')
 
         # Setup instance variables
         self._unit_types = unit_types
@@ -468,6 +532,13 @@ class RecurrentAutoEncoder(AutoEncoder):
         self._bias_regularizer = bias_regularizer
         self._recurrent_regularizer = recurrent_regularizer
         self._go_backwards = go_backwards
+        self._bottleneck_unit_type = bottleneck_unit_type
+        self._bottleneck_activation = bottleneck_activation
+        self._bottleneck_recurrent_activation = bottleneck_recurrent_activation
+        self._bottleneck_recurrent_regularizer = bottleneck_recurrent_regularizer
+        self._bottleneck_kernel_regularizer = bottleneck_kernel_regularizer
+        self._bottleneck_bias_regularizer = bottleneck_bias_regularizer
+        self._bottleneck_activity_regularizer = bottleneck_activity_regularizer
 
         # Build encoder, bottleneck and decoder layers
         encoder_layers = self._build_encoder_layers()
@@ -519,12 +590,12 @@ class RecurrentAutoEncoder(AutoEncoder):
                 activation=activation,
                 recurrent_activation=recurrent_activation,
                 kernel_initializer=self._kernel_initializer,
-                kernel_regularizer=self._kernel_regularizer,
+                kernel_regularizer=None,
                 bias_initializer=self._bias_initializer,
-                bias_regularizer=self._bias_regularizer,
-                activity_regularizer=self._activity_regularizer,
+                bias_regularizer=None,
+                activity_regularizer=None,
                 recurrent_initializer=self._recurrent_initializer,
-                recurrent_regularizer=self._recurrent_regularizer,
+                recurrent_regularizer=None,
                 dropout=self._recurrent_units_dropout,
                 recurrent_dropout=self._recurrent_dropout,
                 return_sequences=True,
@@ -559,12 +630,12 @@ class RecurrentAutoEncoder(AutoEncoder):
                 activation=activation,
                 recurrent_activation=recurrent_activation,
                 kernel_initializer=self._kernel_initializer,
-                kernel_regularizer=self._kernel_regularizer,
+                kernel_regularizer=self._bottleneck_kernel_regularizer,
                 bias_initializer=self._bias_initializer,
-                bias_regularizer=self._bias_regularizer,
+                bias_regularizer=self._bottleneck_bias_regularizer,
                 activity_regularizer=bottleneck_activity_regularizer,
                 recurrent_initializer=self._recurrent_initializer,
-                recurrent_regularizer=self._recurrent_regularizer,
+                recurrent_regularizer=self._bottleneck_recurrent_regularizer,
                 dropout=self._recurrent_units_dropout,
                 recurrent_dropout=self._recurrent_dropout,
                 return_sequences=True,
@@ -582,12 +653,12 @@ class RecurrentAutoEncoder(AutoEncoder):
                 activation=activation,
                 recurrent_activation=recurrent_activation,
                 kernel_initializer=self._kernel_initializer,
-                kernel_regularizer=self._kernel_regularizer,
+                kernel_regularizer=self._bottleneck_kernel_regularizer,
                 bias_initializer=self._bias_initializer,
-                bias_regularizer=self._bias_regularizer,
+                bias_regularizer=self._bottleneck_bias_regularizer,
                 activity_regularizer=bottleneck_activity_regularizer,
                 recurrent_initializer=self._recurrent_initializer,
-                recurrent_regularizer=self._recurrent_regularizer,
+                recurrent_regularizer=self._bottleneck_recurrent_regularizer,
                 dropout=self._recurrent_units_dropout,
                 recurrent_dropout=self._recurrent_dropout,
                 go_backwards=self._go_backwards
@@ -617,12 +688,12 @@ class RecurrentAutoEncoder(AutoEncoder):
             activation=bottleneck_activation,
             recurrent_activation=bottleneck_recurrent_activation,
             kernel_initializer=self._kernel_initializer,
-            kernel_regularizer=self._kernel_regularizer,
+            kernel_regularizer=self._bottleneck_kernel_regularizer,
             bias_initializer=self._bias_initializer,
-            bias_regularizer=self._bias_regularizer,
-            activity_regularizer=self._activity_regularizer,
+            bias_regularizer=self._bottleneck_bias_regularizer,
+            activity_regularizer=self._bottleneck_activity_regularizer,
             recurrent_initializer=self._recurrent_initializer,
-            recurrent_regularizer=self._recurrent_regularizer,
+            recurrent_regularizer=self._bottleneck_recurrent_regularizer,
             dropout=self._recurrent_units_dropout,
             recurrent_dropout=self._recurrent_dropout,
             return_sequences=True,
@@ -637,6 +708,18 @@ class RecurrentAutoEncoder(AutoEncoder):
             units = self._recurrent_units[layer_index]
             activation = self._activations[layer_index]
             recurrent_activation = self._recurrent_activations[layer_index]
+            recurrent_regularizer = None
+            if self._recurrent_regularizer is not None:
+                recurrent_regularizer = self._recurrent_regularizer[layer_index]
+            kernel_regularizer = None
+            if self._kernel_regularizer is not None:
+                kernel_regularizer = self._kernel_regularizer[layer_index]
+            bias_regularizer = None
+            if self._bias_regularizer is not None:
+                bias_regularizer = self._bias_regularizer[layer_index]
+            activity_regularizer = None
+            if self._activity_regularizer is not None:
+                activity_regularizer = self._activity_regularizer[layer_index]
 
             # Construct either LSTM or GRU
             recurrent_layer = constructor(
@@ -645,12 +728,12 @@ class RecurrentAutoEncoder(AutoEncoder):
                 activation=activation,
                 recurrent_activation=recurrent_activation,
                 kernel_initializer=self._kernel_initializer,
-                kernel_regularizer=self._kernel_regularizer,
+                kernel_regularizer=kernel_regularizer,
                 bias_initializer=self._bias_initializer,
-                bias_regularizer=self._bias_regularizer,
-                activity_regularizer=self._activity_regularizer,
+                bias_regularizer=bias_regularizer,
+                activity_regularizer=activity_regularizer,
                 recurrent_initializer=self._recurrent_initializer,
-                recurrent_regularizer=self._recurrent_regularizer,
+                recurrent_regularizer=recurrent_regularizer,
                 dropout=self._recurrent_units_dropout,
                 recurrent_dropout=self._recurrent_dropout,
                 return_sequences=True,
@@ -659,3 +742,37 @@ class RecurrentAutoEncoder(AutoEncoder):
             decoder_layers.append(recurrent_layer)
 
         return decoder_layers
+
+    def get_config(self) -> dict[str, Union[None, list[Optional[dict[str, Any]]], tuple, int]]:
+        config = {
+            "input_shape": self.input_shape,
+            "unit_types": self._unit_types,
+            "recurrent_units": self._recurrent_units,
+            "latent_space_dim": self.latent_space_dim,
+            "activations": self._activations,
+            "recurrent_activations": self._recurrent_activations,
+            "bottleneck_unit_type": self._bottleneck_unit_type,
+            "bottleneck_returns_sequences": self._bottleneck_returns_sequences,
+            "bottleneck_activation": self._bottleneck_activation,
+            "bottleneck_recurrent_activation": self._bottleneck_recurrent_activation,
+            "bottleneck_recurrent_regularizer": self._bottleneck_recurrent_regularizer,
+            "bottleneck_kernel_regularizer": self._bottleneck_kernel_regularizer,
+            "bottleneck_bias_regularizer": self._bottleneck_bias_regularizer,
+            "bottleneck_activity_regularizer": self._bottleneck_activity_regularizer,
+            "recurrent_units_dropout": self._recurrent_units_dropout,
+            "recurrent_dropout": self._recurrent_dropout,
+            "recurrent_initializer": self._recurrent_initializer,
+            "kernel_initializer": self._kernel_initializer,
+            "bias_initializer": self._bias_initializer,
+            "recurrent_regularizer": self._recurrent_regularizer,
+            "kernel_regularizer": self._kernel_regularizer,
+            "bias_regularizer": self._bias_regularizer,
+            "activity_regularizer": self._activity_regularizer,
+            "go_backwards": self._go_backwards,
+            "do_batch_norm": self._do_batch_norm
+        }
+        return config
+
+    @classmethod
+    def from_config(cls, config, custom_objects=None):
+        return cls(**config)

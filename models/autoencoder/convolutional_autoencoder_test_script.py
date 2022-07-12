@@ -3,12 +3,12 @@ from models.autoencoder.convolutional_autoencoder import Convolutional1DAutoEnco
 
 def main():
     n_features = 128
-    n_timesteps = 300
-    batch_size = 10
-    conv_filters = [32, 64, 128, 256, 512]
-    conv_kernels_size = [5, 5, 5, 3, 3]
-    conv_strides = [1, 1, 1, 1, 1]
-    conv_pools = [1, 1, 1, 1, 1]
+    n_timesteps = 227
+    batch_size = 200
+    conv_filters = [32, 64, 128]
+    conv_kernels_size = [5, 5, 3]
+    conv_strides = [2, 2, 2]
+    conv_pools = [2, 2, 2]
     input_shape = (batch_size, n_timesteps, n_features)
 
     model = Convolutional1DAutoEncoder(
@@ -20,9 +20,13 @@ def main():
         conv_pools=conv_pools,
         dropout_dense=0.5
     )
-
     model.compile(optimizer='adam', loss='mse')
-    # model.build()
+    model.summary(expand_nested=True)
+
+    # get_config() test
+    config = model.get_config()
+    model = Convolutional1DAutoEncoder.from_config(config)
+    model.compile(optimizer='adam', loss='mse')
     model.summary(expand_nested=True)
 
 

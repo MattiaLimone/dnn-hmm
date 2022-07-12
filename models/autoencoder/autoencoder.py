@@ -7,6 +7,7 @@ import tensorflow as tf
 
 ENCODER_MODEL_NAME: final = "Encoder"
 DECODER_MODEL_NAME: final = "Decoder"
+_BATCH_NORM_LAYER_NAME: final = "output_batch_normalization"
 _DECODER_LAYER_DEFAULT_POSTFIX = "_decoder"
 _RANDOM_SEED: final = None
 
@@ -95,9 +96,9 @@ class FlattenDenseLayer(Layer):
         """
         Computes the output shape of the layer.
 
-        :param input_shape: shape tuple (tuple of integers) or list of shape tuples (one per output tensor of the layer).
-            Shape tuples can include None for free dimensions, instead of an integer.
-        :return: An input shape tuple.
+        :param input_shape: shape tuple or list of shape tuples (one per output tensor of the layer). Shape tuples can
+            include None for free dimensions, instead of an integer.
+        :return: output shape tuple.
         """
         flattened_input_shape = self._flatten_layer.compute_output_shape(input_shape)
         return self._dense.compute_output_shape(flattened_input_shape)
@@ -114,7 +115,6 @@ class FlattenDenseLayer(Layer):
     def get_config(self):
         config = super().get_config()
         config.update({
-            'units': self.units,
             "flatten_data_format": self._flatten_layer.data_format,
             "dropout": self._dropout.rate,
             **self._dense.get_config()
@@ -225,7 +225,7 @@ class AutoEncoder(Model):
 
             # Add batch normalization layer before the output layer, if required
             if do_batch_norm:
-                self._decoder.add(BatchNormalization(name="output_batch_normalization"))
+                self._decoder.add(BatchNormalization(name=_BATCH_NORM_LAYER_NAME))
 
             # Add last layer that has the same size as the input of the network
             if outputs_sequences:
@@ -576,3 +576,16 @@ class AutoEncoder(Model):
     @property
     def latent_space_dim(self) -> int:
         return self._latent_space_dim
+
+    @property
+    def input_shape(self):
+        return self._input_shape
+
+    @property
+    def _do_batch_norm(self) -> bool:
+        try:
+            self._decoder.get_layer(name=_BATCH_NORM_LAYER_NAME)
+            do_batch_norm = True
+        except ValueError:
+            do_batch_norm = False
+        return do_batch_norm

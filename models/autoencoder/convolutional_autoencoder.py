@@ -1,4 +1,4 @@
-from typing import Iterable, final, Optional, Union
+from typing import Iterable, final, Optional, Union, Any
 import numpy as np
 from autoencoder import AutoEncoder
 from keras.layers import MaxPooling1D, UpSampling1D, Conv1D, Layer, BatchNormalization, AveragePooling1D, Dropout, \
@@ -80,12 +80,13 @@ class Convolutional1DAutoEncoder(AutoEncoder):
         self._shape_before_bottleneck = None
         self._dropout_conv = dropout_conv
         self._dropout_dense = dropout_dense
+        self._ignore_first_convolutional_decoder = ignore_first_convolutional_decoder
 
         # Build convolutional layer blocks for encoder, decoder and bottleneck
         # Final output shape of the convolutional encoder blocks shape is the shape before the bottleneck flattening
         encoder_conv_blocks, conv_output_shape = self._build_encoder_conv_blocks(input_shape)
         bottleneck, bottleneck_output_shape = self._build_bottleneck(conv_output_shape, latent_space_dim)
-        decoder_conv_blocks = self._build_decoder(conv_output_shape, ignore_first_convolutional_decoder)
+        decoder_conv_blocks = self._build_decoder(conv_output_shape)
 
         # Call the parent constructor passing the created layers to it
         super(Convolutional1DAutoEncoder, self).__init__(
@@ -182,14 +183,12 @@ class Convolutional1DAutoEncoder(AutoEncoder):
         bottleneck_output_shape = flatten_dense_layer.compute_output_shape(conv_output_shape)
         return flatten_dense_layer, bottleneck_output_shape
 
-    def _build_decoder(self, conv_output_shape: tuple[int, ...], ignore_first_convolutional_decoder: bool = False) \
-            -> Iterable[Union[Dense, Dropout, Reshape, Conv1DTranspose, UpSampling1D]]:
+    def _build_decoder(self, conv_output_shape: tuple[int, ...]) -> Iterable[Union[Dense, Dropout, Reshape,
+                                                                                   Conv1DTranspose, UpSampling1D]]:
         """
         Build the decoder layers, which consists of the symmetrical architecture of the decoder.
 
         :param conv_output_shape: final output shape of the bottleneck layer.
-        :param ignore_first_convolutional_decoder: a boolean. If true first layer of decoder will not be added to the
-            model.
         :return: created DecoderLayer with given output shape
         """
         decoder_layers = []
@@ -209,13 +208,12 @@ class Convolutional1DAutoEncoder(AutoEncoder):
         decoder_layers.append(decoder_reshape_layer)
 
         # Add all convolutional transpose layers
-        decoder_conv_transpose_layers = self._build_decoder_conv_transpose_blocks(ignore_first_convolutional_decoder)
+        decoder_conv_transpose_layers = self._build_decoder_conv_transpose_blocks()
         decoder_layers.extend(decoder_conv_transpose_layers)
 
         return decoder_layers
 
-    def _build_decoder_conv_transpose_blocks(self, ignore_first_convolutional_decoder: bool) -> \
-            Iterable[Union[Conv1DTranspose, UpSampling1D, Dropout]]:
+    def _build_decoder_conv_transpose_blocks(self) -> Iterable[Union[Conv1DTranspose, UpSampling1D, Dropout]]:
         """
         Build the upsampling layers of the decoder to reconstruct the input in the decoder layer.
 
@@ -227,7 +225,7 @@ class Convolutional1DAutoEncoder(AutoEncoder):
 
         # For each conv layer index in reverse order (ignoring the first convolutional if parameter is given), build a
         # new de-convolutional block and add it to the lis
-        conv_starting_index = 1 if ignore_first_convolutional_decoder else 0
+        conv_starting_index = 1 if self._ignore_first_convolutional_decoder else 0
         for layer_index in reversed(range(conv_starting_index, self._n_convolution_layers)):
             decoder_conv_transpose_block = self._build_decoder_deconv_block(layer_index)
             decoder_conv_transpose_blocks.extend(decoder_conv_transpose_block)
@@ -269,6 +267,27 @@ class Convolutional1DAutoEncoder(AutoEncoder):
             deconv_block.append(conv_dropout_layer)
 
         return deconv_block
+
+    def get_config(self) -> dict[str, Union[None, list[Optional[dict[str, Any]]], tuple, int]]:
+        config = {
+            "input_shape": self.input_shape,
+            "latent_space_dim": self.latent_space_dim,
+            "conv_filters": self._conv_filters,
+            "conv_kernels_size": self._conv_kernels_size,
+            "conv_strides": self._conv_strides,
+            "conv_pools": self._conv_pools,
+            "pool_type": self._pool_type,
+            "dropout_conv": self._dropout_conv,
+            "dropout_dense": self._dropout_dense,
+            "activation": self._activation,
+            "ignore_first_convolutional_decoder": self._ignore_first_convolutional_decoder,
+            "do_batch_norm": self._do_batch_norm
+        }
+        return config
+
+    @classmethod
+    def from_config(cls, config, custom_objects=None):
+        return cls(**config)
 
 
 

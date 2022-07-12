@@ -1,6 +1,6 @@
 from keras import Sequential
 from autoencoder import AutoEncoder, FlattenDenseLayer
-from keras.layers import LSTM, Dense
+from keras.layers import LSTM
 
 
 def main():
@@ -20,6 +20,7 @@ def main():
         bottleneck=lstm3,
         decoder_layers=decoder_layers,
         outputs_sequences=True,
+        do_batch_norm=True,
         input_shape=input_shape,
     )
     model.summary(expand_nested=True)
