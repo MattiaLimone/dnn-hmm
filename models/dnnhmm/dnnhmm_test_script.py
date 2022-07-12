@@ -1,9 +1,8 @@
 from typing import final
 import tensorflow as tf
-from keras.callbacks import EarlyStopping
+from tensorflow.python.keras.callbacks import EarlyStopping
 from keras.optimizers import Adadelta
 import keras.regularizers as regularizers
-from tensorflow.python.keras.layers import Dropout
 from matplotlib import pyplot
 from models.recconvsnet.recconvsnet import RecConv1DSiameseNet
 from models.autoencoder.autoencoder import ENCODER_MODEL_NAME
@@ -21,7 +20,6 @@ _REC_AUTOENC_PATH: final = f"fitted_autoencoder/lstm/autoencoder_lstm_{_EPOCHS_L
 
 def main():
     # Load dataset and labels
-
     train_mfccs, train_mfccs_labels = load_dataset(TRAIN_SET_PATH_MFCCS)
     test_mfccs, test_mfccs_labels = load_dataset(TEST_SET_PATH_MFCCS)
     train_mel_spec, train_mel_spec_labels = load_dataset(TRAIN_SET_PATH_MEL_SPEC)
@@ -40,25 +38,13 @@ def main():
     conv_branch = conv_autoencoder.get_layer(ENCODER_MODEL_NAME).layers
     rec_branch = rec_autoencoder.get_layer(ENCODER_MODEL_NAME).layers
 
-    # Add additional layers
-    dropout_rate = 0.5
-    rec_branch.insert(3, Dropout(rate=dropout_rate))
-    rec_branch.insert(2, Dropout(rate=dropout_rate))
-    rec_branch.insert(1, Dropout(rate=dropout_rate))
-
-    conv_branch.insert(6,Dropout(rate=dropout_rate))
-    conv_branch.insert(3, Dropout(rate=dropout_rate))
-
-    conv_branch.append(Dropout(rate=dropout_rate))
-    rec_branch.append(Dropout(rate=dropout_rate))
-
     # Set model parameters
-    tail_dense_units = total_state_number
+    tail_dense_units = 512
 
     # Set model training parameters
-    epochs = 600
+    epochs = 1
 
-    batch_size = 150
+    batch_size = 1
     loss = tf.keras.losses.SparseCategoricalCrossentropy(
         from_logits=False,
         name='sparse_categorical_crossentropy'
@@ -70,7 +56,7 @@ def main():
         name='adadelta_optimizer'
     )
     callbacks = [
-        EarlyStopping(monitor='val_loss', patience=100, min_delta=0.001, restore_best_weights=True)
+        EarlyStopping(monitor='val_loss', patience=50, min_delta=0.001, restore_best_weights=True)
     ]
     metrics = [tf.keras.metrics.SparseCategoricalAccuracy(
         name='sparse_categorical_accuracy', dtype=None
@@ -87,18 +73,18 @@ def main():
         input_shape_conv_branch=input_shape_conv_branch,
         tail_dense_units=tail_dense_units,
         output_dim=total_state_number,
-        tail_dense_activation=tf.keras.layers.LeakyReLU(alpha=0.1),
+        tail_dense_activation='relu',
         add_repeat_vector_conv_branch=True,
-        kernel_regularizer_dense=regularizers.L1(1e-5),
-        activity_regularizer_softmax=regularizers.L1(1e-5),
-        dropout_dense=dropout_rate
+        kernel_regularizer_softmax=regularizers.L1(l1=0.001),
+        dropout_dense=0.6
     )
+    model.load_weights("fitted_recconvsnet/recconvsnet_600_epochs_v0.3")
     model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
     model.summary(expand_nested=True)
 
     # Convert one-hot encoded labels to integer labels
-    labels_train = one_hot_labels_to_integer_labels(train_mfccs_labels)
-    labels_test = one_hot_labels_to_integer_labels(test_mfccs_labels)
+    labels_train = one_hot_labels_to_integer_labels(train_mel_spec_labels)
+    labels_test = one_hot_labels_to_integer_labels(test_mel_spec_labels)
 
     # Train the model
     history = model.fit(

@@ -191,4 +191,5 @@ data/
 data/cleaned
 /data/
 /fitted_autoencoder/
+/fitted_recconvsnet/
 /acoustic_models/
