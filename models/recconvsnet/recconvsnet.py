@@ -25,8 +25,8 @@ class RecConv1DSiameseNet(Model):
 
     Finally, the tail represents the conjunction between the convolutional branch and the recurrent branch, starting
     with a trough-time vector flattening/concatenation (so flattening/concatenation excludes the first two input axes,
-    namely batch_size and timesteps). After the concatenation, the input passes through two dense layers and a final
-    softmax activation function, which produces the output probabilities.
+    namely batch_size and timesteps). After the concatenation, the input passes through two dense layers with given
+    activations and a final dense layer with softmax activation function, which produces the output probabilities.
     """
 
     def __init__(self,
@@ -78,6 +78,16 @@ class RecConv1DSiameseNet(Model):
         # Set instance variables
         self.__input_shape_rec_branch = input_shape_rec_branch
         self.__input_shape_conv_branch = input_shape_conv_branch
+        self.__tail_dense_units = tail_dense_units
+        self.__output_dim = output_dim
+        self.__tail_dense_activation = tail_dense_activation
+        self.__dropout_dense = dropout_dense
+        self.__kernel_regularizer_dense = kernel_regularizer_dense
+        self.__bias_regularizer_dense = bias_regularizer_dense
+        self.__activity_regularizer_dense = activity_regularizer_dense
+        self.__kernel_regularizer_softmax = kernel_regularizer_softmax
+        self.__bias_regularizer_softmax = bias_regularizer_softmax
+        self.__activity_regularizer_softmax = activity_regularizer_softmax
 
         # Build recurrent branch
         self.__recurrent_branch = self._build_recurrent_branch(rec_branch_layers)
@@ -86,18 +96,7 @@ class RecConv1DSiameseNet(Model):
         self.__conv_branch = self._build_conv_branch(conv_branch_layers, add_repeat_vector_conv_branch)
 
         # Build tail
-        self.__tail = self._build_tail(
-            tail_dense_units,
-            tail_dense_activation,
-            output_dim,
-            dropout_dense,
-            kernel_regularizer_dense,
-            bias_regularizer_dense,
-            activity_regularizer_dense,
-            kernel_regularizer_softmax,
-            bias_regularizer_softmax,
-            activity_regularizer_softmax
-        )
+        self.__tail = self._build_tail()
 
         # Build the model
         self.build(input_shape=[input_shape_rec_branch, input_shape_conv_branch])
@@ -160,22 +159,10 @@ class RecConv1DSiameseNet(Model):
             )
         return conv_branch
 
-    def _build_tail(self, tail_dense_units: int, tail_dense_activation, output_dim: int, dropout_dense,
-                    kernel_regularizer_dense, bias_regularizer_dense, activity_regularizer_dense,
-                    kernel_regularizer_softmax, bias_regularizer_softmax, activity_regularizer_softmax) -> Model:
+    def _build_tail(self) -> Model:
         """
         Builds the tail of the double-branched network.
 
-        :param tail_dense_units: number of units of the tail dense layer.
-        :param tail_dense_activation: activation function of the tail dense layer (by default, ReLU is used).
-        :param output_dim: number of units/classes of the output layer.
-        ::param dropout_dense: dropout rate for the dense layer prior to the last layer.
-        :param kernel_regularizer_dense: kernel regularizer for the dense layer prior to the last layer.
-        :param bias_regularizer_dense: bias regularizer for the dense layer prior to the last layer.
-        :param activity_regularizer_dense: activity regularizer for the dense layer prior to the last layer.
-        :param kernel_regularizer_dense: kernel regularizer for the last layer.
-        :param bias_regularizer_dense: bias regularizer for the last layer.
-        :param activity_regularizer_dense: activity regularizer for the last layer.
         :return: a keras Model representing the tail of the double-branched network.
         """
         merge = TimeDistributed(
@@ -184,40 +171,40 @@ class RecConv1DSiameseNet(Model):
         )([self.__recurrent_branch.output, self.__conv_branch.output])
         dense0 = TimeDistributed(
             Dense(
-                units=tail_dense_units,
-                activation=tail_dense_activation,
-                kernel_regularizer=kernel_regularizer_dense,
-                bias_regularizer=bias_regularizer_dense,
-                activity_regularizer=activity_regularizer_dense,
+                units=self.__tail_dense_units,
+                activation=self.__tail_dense_activation,
+                kernel_regularizer=self.__kernel_regularizer_dense,
+                bias_regularizer=self.__bias_regularizer_dense,
+                activity_regularizer=self.__activity_regularizer_dense,
             ),
             name="tail_dense0"
         )(merge)
-        if dropout_dense > 0:
+        if self.__dropout_dense > 0:
             dense0 = TimeDistributed(
-                Dropout(rate=dropout_dense),
+                Dropout(rate=self.__dropout_dense),
                 name="tail_dropout_dense_0"
             )(dense0)
         dense1 = TimeDistributed(
             Dense(
-                units=tail_dense_units,
-                activation=tail_dense_activation,
-                kernel_regularizer=kernel_regularizer_dense,
-                bias_regularizer=bias_regularizer_dense,
-                activity_regularizer=activity_regularizer_dense,
+                units=self.__tail_dense_units,
+                activation=self.__tail_dense_activation,
+                kernel_regularizer=self.__kernel_regularizer_dense,
+                bias_regularizer=self.__bias_regularizer_dense,
+                activity_regularizer=self.__activity_regularizer_dense,
             ),
             name="tail_dense1"
         )(dense0)
-        if dropout_dense > 0:
+        if self.__dropout_dense > 0:
             dense1 = TimeDistributed(
-                Dropout(rate=dropout_dense),
+                Dropout(rate=self.__dropout_dense),
                 name="tail_dropout_dense_1"
             )(dense1)
         dense2 = TimeDistributed(
             Dense(
-                units=output_dim,
-                kernel_regularizer=kernel_regularizer_softmax,
-                bias_regularizer=bias_regularizer_softmax,
-                activity_regularizer=activity_regularizer_softmax
+                units=self.__output_dim,
+                kernel_regularizer=self.__kernel_regularizer_softmax,
+                bias_regularizer=self.__bias_regularizer_softmax,
+                activity_regularizer=self.__activity_regularizer_softmax
             ),
             name="tail_output_dense"
         )(dense1)
@@ -250,6 +237,114 @@ class RecConv1DSiameseNet(Model):
         """
         return self.__input_shape_conv_branch
 
+    @property
+    def tail_dense_units(self) -> int:
+        """
+        Retrieves the unit number of units of the tail dense layers.
+
+        :return: an integer representing the unit number of the tail dense layers.
+        """
+        return self.__tail_dense_units
+
+    @property
+    def output_dim(self) -> int:
+        """
+        Retrieves the output dimension.
+
+        :return: an integer representing the output dimensionality (i.e. number of output classes).
+        """
+        return self.__output_dim
+
+    @property
+    def tail_dense_activation(self):
+        """
+        Retrieves the activation function of the tail dense layers.
+
+        :return: the activation function of the tail dense layers.
+        """
+        return self.__tail_dense_activation
+
+    @property
+    def dropout_dense(self) -> float:
+        """
+        Retrieves the dropout rate applied to the dense layers of the tail.
+
+        :return: a float representing the dropout rate applied to the dense layers of the tail.
+        """
+        return self.__dropout_dense
+
+    @property
+    def kernel_regularizer_dense(self):
+        """
+        Retrieves the kernel regularization function applied to the tail dense layers (except the last, softmax one).
+
+        :return: the kernel regularization function applied to the tail dense layers (except the last, softmax one).
+        """
+        return self.__kernel_regularizer_dense
+
+    @property
+    def bias_regularizer_dense(self):
+        """
+        Retrieves the bias regularization function applied to the tail dense layers (except the last, softmax one).
+
+        :return: the bias regularization function applied to the tail dense layers (except the last, softmax one).
+        """
+        return self.__bias_regularizer_dense
+
+    @property
+    def activity_regularizer_dense(self):
+        """
+        Retrieves the activity regularization function applied to the tail dense layers (except the last, softmax one).
+
+        :return: the activity regularization function applied to the tail dense layers (except the last, softmax one).
+        """
+        return self.__activity_regularizer_dense
+
+    @property
+    def kernel_regularizer_softmax(self):
+        """
+        Retrieves the kernel regularization function applied to the last softmax dense layer.
+
+        :return: the kernel regularization function applied to the last softmax dense layer.
+        """
+        return self.__kernel_regularizer_softmax
+
+    @property
+    def bias_regularizer_softmax(self):
+        """
+        Retrieves the bias regularization function applied to the last softmax dense layer.
+
+        :return: the bias regularization function applied to the last softmax dense layer.
+        """
+        return self.__bias_regularizer_softmax
+
+    @property
+    def activity_regularizer_softmax(self):
+        """
+        Retrieves the activity regularization function applied to the last softmax dense layer.
+
+        :return: the activity regularization function applied to the last softmax dense layer.
+        """
+        return self.__activity_regularizer_softmax
+
+    @property
+    def rec_branch_layers(self) -> list[Layer]:
+        """
+        Retrieves the layers of the recurrent branch of the network.
+
+        :return: a list containing the layers of the recurrent branch.
+        """
+        return self.__recurrent_branch.layers
+
+    @property
+    def conv_branch_layers(self) -> list[Layer]:
+        """
+        Retrieves the layers of the convolutional branch of the network.
+
+        :return: a list containing the layers of the convolutional branch.
+        """
+        return self.__conv_branch.layers
+
     def call(self, inputs, training=None, mask=None):
         rec_branch_input, conv_branch_input = inputs
         rec_output = self.__recurrent_branch(rec_branch_input)
@@ -258,11 +353,27 @@ class RecConv1DSiameseNet(Model):
 
     def get_config(self) -> dict[str, Union[None, list[Optional[dict[str, Any]]], tuple, int]]:
         config_dict = {
-            **self.__recurrent_branch.get_config(),
-            **self.__conv_branch.get_config(),
-            **self.__tail.get_config()
+            "rec_branch_layers": self.rec_branch_layers,
+            "conv_branch_layers": self.conv_branch_layers,
+            "input_shape_rec_branch": self.input_shape_rec_branch,
+            "input_shape_conv_branch": self.input_shape_conv_branch,
+            "tail_dense_units": self.tail_dense_units,
+            "output_dim": self.output_dim,
+            "tail_dense_activation": self.tail_dense_activation,
+            "add_repeat_vector_conv_branch": False,
+            "dropout_dense": self.dropout_dense,
+            "kernel_regularizer_dense": self.kernel_regularizer_dense,
+            "bias_regularizer_dense": self.bias_regularizer_dense,
+            "activity_regularizer_dense": self.activity_regularizer_dense,
+            "kernel_regularizer_softmax": self.kernel_regularizer_softmax,
+            "bias_regularizer_softmax": self.bias_regularizer_softmax,
+            "activity_regularizer_softmax": self.activity_regularizer_softmax
         }
         return config_dict
+
+    @classmethod
+    def from_config(cls, config, custom_objects=None):
+        return cls(**config)
 
     def summary(self, line_length=None, positions=None, print_fn=None, expand_nested: bool = True,
                 show_trainable: bool = False):

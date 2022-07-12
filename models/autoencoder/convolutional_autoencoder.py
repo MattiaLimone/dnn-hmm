@@ -1,9 +1,8 @@
 from typing import Iterable, final, Optional, Union, Any
 import numpy as np
-from autoencoder import AutoEncoder
 from keras.layers import MaxPooling1D, UpSampling1D, Conv1D, Layer, BatchNormalization, AveragePooling1D, Dropout, \
     Dense, Conv1DTranspose, Reshape
-from autoencoder import FlattenDenseLayer, _RANDOM_SEED
+from models.autoencoder.autoencoder import FlattenDenseLayer, _RANDOM_SEED, AutoEncoder
 
 AVG_POOL: final = "AVG"
 MAX_POOL: final = "MAX"
@@ -217,8 +216,6 @@ class Convolutional1DAutoEncoder(AutoEncoder):
         """
         Build the upsampling layers of the decoder to reconstruct the input in the decoder layer.
 
-        :param ignore_first_convolutional_decoder: a boolean. If true first layer of decoder will not be added to the
-            model.
         :return: created transpose block for each convolutional layer
         """
         decoder_conv_transpose_blocks = []
@@ -288,8 +285,3 @@ class Convolutional1DAutoEncoder(AutoEncoder):
     @classmethod
     def from_config(cls, config, custom_objects=None):
         return cls(**config)
-
-
-
-
-
