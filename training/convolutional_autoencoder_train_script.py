@@ -1,8 +1,17 @@
+from typing import final
+import keras.regularizers as regularizers
+import keras.models
 from keras.callbacks import EarlyStopping
-from keras.optimizer_v2.gradient_descent import SGD
+from keras.optimizers import SGD, Adadelta
 import matplotlib.pyplot as pyplot
 from models.autoencoder.convolutional_autoencoder import Convolutional1DAutoEncoder
-from training_utils import load_dataset, TRAIN_SET_PATH_MEL_SPEC, TEST_SET_PATH_MEL_SPEC
+from training_utils import load_dataset, TRAIN_SET_PATH_MEL_SPEC, TEST_SET_PATH_MEL_SPEC, coeff_determination
+import tensorflow as tf
+
+
+_EPOCHS_LOAD_CONV: final = 1500
+_VERSION_LOAD_CONV: final = 1.5
+_CONV_AUTOENC_PATH: final = f"fitted_autoencoder/cnn/autoencoder_cnn_{_EPOCHS_LOAD_CONV}_epochs_v{_VERSION_LOAD_CONV}"
 
 
 def main():
@@ -20,42 +29,57 @@ def main():
     conv_pools = [2, 2, 2]
 
     # Set model training parameters
-    epochs = 750
-    batch_size = 10
+    epochs = 2000
+    batch_size = 100
+    optimizer = Adadelta(
+        learning_rate=1,  # was 10
+        rho=0.95,
+        epsilon=1e-7,
+        name='adadelta_optimizer'
+    )
     optimizer = SGD(
         learning_rate=0.05,
         momentum=0.9,
         nesterov=True,
-        clipnorm=1.0,
+        clipnorm=1,
+        clipvalue=0.5,
         name="SGD"
     )
+
     loss = 'mae'
     callbacks = [
-        EarlyStopping(monitor='loss', patience=10, min_delta=0.001, restore_best_weights=True)
+        EarlyStopping(monitor='val_loss', patience=50, min_delta=0.001, restore_best_weights=True)
     ]
-    version = 1.1  # For easy saving of multiple model versions
+    metrics = [coeff_determination]
+    version = 1.5  # For easy saving of multiple model versions
 
     # Instantiate the model and compile it
-    model = Convolutional1DAutoEncoder(
-        input_shape=input_shape,
-        conv_filters=conv_filters,
-        conv_kernels_size=conv_kernels_size,
-        conv_strides=conv_strides,
-        latent_space_dim=1024,
-        conv_pools=conv_pools,
-        dropout_dense=0
-    )
-    model.compile(optimizer=optimizer, loss=loss)
+    retraining = int(input("Insert 0 for training and 1 for retraining: "))
+    if retraining == 0:
+        model = Convolutional1DAutoEncoder(
+            input_shape=input_shape,
+            conv_filters=conv_filters,
+            conv_kernels_size=conv_kernels_size,
+            conv_strides=conv_strides,
+            latent_space_dim=4096,
+            conv_pools=conv_pools,
+            dropout_dense=0.5,
+            dropout_conv=0.5
+        )
+    else:
+        model = keras.models.load_model(_CONV_AUTOENC_PATH)
+    model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
     model.summary(expand_nested=True)
 
     # Train the model
     history = model.fit(
         x=train_audio_tensor_numpy,
+        y=train_audio_tensor_numpy,
         epochs=epochs,
         batch_size=batch_size,
         shuffle=True,
         callbacks=callbacks,
-        validation_data=(train_audio_tensor_numpy, test_audio_tensor_numpy)
+        validation_data=(test_audio_tensor_numpy, test_audio_tensor_numpy)
     )
 
     # Plot results
@@ -65,7 +89,10 @@ def main():
     pyplot.show()
 
     # Save the autoencoder to file
-    model.save(f'data/fitted_autoencoder/cnn/autoencoder_cnn_{epochs}_epochs_v{version}')
+    if retraining == 0:
+        model.save(f'fitted_autoencoder/cnn/autoencoder_cnn_{epochs}_epochs_v{version}')
+    else:
+        model.save(f'fitted_autoencoder/cnn/autoencoder_cnn_{epochs+_EPOCHS_LOAD_CONV}_epochs_v{version}')
 
 
 if __name__ == "__main__":

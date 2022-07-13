@@ -1,13 +1,13 @@
 from typing import final
 import tensorflow as tf
-from tensorflow.python.keras.callbacks import EarlyStopping
-from tensorflow.python.keras.optimizers import Adam, Adadelta
+from keras.callbacks import EarlyStopping
+from keras.optimizers import Adam, Adadelta
 import keras.regularizers as regularizers
 from matplotlib import pyplot
 from keras.layers import Dense, Flatten, MaxPooling2D, Conv2D, BatchNormalization, Input, Dropout, \
     TimeDistributed
 from models.autoencoder.autoencoder import ENCODER_MODEL_NAME
-from training.training_utils import TRAIN_SET_PATH_MFCCS, TEST_SET_PATH_MFCCS, TRAIN_SET_PATH_MEL_SPEC, \
+from training_utils import TRAIN_SET_PATH_MFCCS, TEST_SET_PATH_MFCCS, TRAIN_SET_PATH_MEL_SPEC, \
     TEST_SET_PATH_MEL_SPEC, load_dataset, get_label_number, one_hot_labels_to_integer_labels
 
 
@@ -32,7 +32,7 @@ def main():
     rec_branch = rec_autoencoder.get_layer(ENCODER_MODEL_NAME)
 
     # Set model parameters
-    tail_dense_units = 512
+    tail_dense_units = total_state_number
 
     # Set model training parameters
     epochs = 1000
@@ -49,16 +49,24 @@ def main():
         name='adadelta_optimizer'
     )
     callbacks = [
-        EarlyStopping(monitor='val_loss', patience=50, min_delta=0.001, restore_best_weights=True)
+        EarlyStopping(monitor='val_loss', patience=100, min_delta=0.001, restore_best_weights=True)
     ]
     metrics = [tf.keras.metrics.SparseCategoricalAccuracy(
         name='sparse_categorical_accuracy', dtype=None
+    ), tf.keras.metrics.SparseTopKCategoricalAccuracy(
+        k=8, name='sparse_top_k_categorical_accuracy', dtype=None
     )]
-    version = 0.3  # For easy saving of multiple model versions
+    version = 0.4  # For easy saving of multiple model versions
 
     # Instantiate the model and compile it
     model = rec_branch
-    model.add(Dense(total_state_number, activation='softmax'))
+    model.add(Dense(units=tail_dense_units,
+                    activation=tf.keras.layers.LeakyReLU(alpha=0.1),
+                    kernel_regularizer=regularizers.L1(1e-5)))
+    model.add(Dropout(rate=0.5))
+    model.add(Dense(total_state_number,
+                    activation='softmax',
+                    activity_regularizer=regularizers.L1(1e-5)))
     model.build(input_shape_rec_branch)
     model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
     model.summary(expand_nested=True)

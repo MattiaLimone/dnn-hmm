@@ -64,6 +64,7 @@ def main():
     # Train the model
     history = model.fit(
         x=train_audio_tensor_numpy,
+        y=train_audio_tensor_numpy,
         epochs=epochs,
         batch_size=batch_size,
         shuffle=True,
