@@ -18,7 +18,9 @@ def main():
         conv_strides=conv_strides,
         latent_space_dim=64,
         conv_pools=conv_pools,
-        dropout_dense=0.5
+        dropout_dense=0.5,
+        do_batch_norm=True,
+        last_layer_activation='relu'
     )
     model.compile(optimizer='adam', loss='mse')
     model.summary(expand_nested=True)

@@ -40,7 +40,11 @@ def main():
         recurrent_units_dropout=recurrent_units_dropout,
         recurrent_dropout=recurrent_dropout,
         bottleneck_returns_sequences=True,
-        do_batch_norm=True
+        do_batch_norm=True,
+        last_layer_bias_regularizer=regularizers.l1(1e-4),
+        last_layer_activity_regularizer=regularizers.l1(1e-4),
+        last_layer_kernel_regularizer=regularizers.l1(1e-4),
+        last_layer_activation='relu'
     )
     model.compile(optimizer='adam', loss='mse')
     model.summary()

@@ -419,7 +419,8 @@ class RecurrentAutoEncoder(AutoEncoder):
                  kernel_regularizer: Optional[list[None, Any]] = None,
                  bias_regularizer: Optional[list[None, Any]] = None,
                  activity_regularizer: Optional[list[None, Any]] = None, go_backwards: bool = False,
-                 do_batch_norm: bool = True):
+                 do_batch_norm: bool = True, last_layer_activation=None, last_layer_kernel_regularizer=None,
+                 last_layer_bias_regularizer=None, last_layer_activity_regularizer=None):
         """
         Constructor. Most of the parameters used in keras LSTM/GRU layers can be passed to this method.
 
@@ -472,6 +473,11 @@ class RecurrentAutoEncoder(AutoEncoder):
         :param go_backwards: Boolean (default False). If True, process the input sequence backwards and return the
             reversed sequence.
         :param do_batch_norm: whether or not to add a batch normalization layer before the output layer of the decoder.
+        :param last_layer_activation: activation function applied to the output layer, if None is given, then a linear
+                                      activation function is applied (a(x) = x).
+        :param last_layer_kernel_regularizer: regularization function applied to the output layer's kernel.
+        :param last_layer_bias_regularizer: regularization function applied to the output layer's biases.
+        :param last_layer_activity_regularizer: regularization function applied to the output layer's activation.
         """
         if not input_shape and input_shape[-1] < 1:
             raise ValueError('Feature number must be strictly positive. '
@@ -564,6 +570,10 @@ class RecurrentAutoEncoder(AutoEncoder):
             bottleneck=bottleneck,
             decoder_layers=decoder_layers,
             do_batch_norm=do_batch_norm,
+            last_layer_activation=last_layer_activation,
+            last_layer_kernel_regularizer=last_layer_kernel_regularizer,
+            last_layer_bias_regularizer=last_layer_bias_regularizer,
+            last_layer_activity_regularizer=last_layer_activity_regularizer,
             outputs_sequences=True
         )
 
@@ -744,6 +754,9 @@ class RecurrentAutoEncoder(AutoEncoder):
         return decoder_layers
 
     def get_config(self) -> dict[str, Union[None, list[Optional[dict[str, Any]]], tuple, int]]:
+        sup_config = super(RecurrentAutoEncoder, self).get_config()
+        del sup_config[AutoEncoder.ENCODER_CONFIG]
+        del sup_config[AutoEncoder.DECODER_CONFIG]
         config = {
             "input_shape": self.input_shape,
             "unit_types": self._unit_types,
@@ -769,7 +782,7 @@ class RecurrentAutoEncoder(AutoEncoder):
             "bias_regularizer": self._bias_regularizer,
             "activity_regularizer": self._activity_regularizer,
             "go_backwards": self._go_backwards,
-            "do_batch_norm": self._do_batch_norm
+            **sup_config
         }
         return config
 
