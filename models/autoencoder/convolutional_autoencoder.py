@@ -16,7 +16,9 @@ class Convolutional1DAutoEncoder(AutoEncoder):
     def __init__(self, input_shape: tuple[int, ...], conv_filters: list[int], conv_kernels_size: list[int],
                  conv_strides: list[int], latent_space_dim: int, conv_pools: list[Optional[int]] = None,
                  dropout_conv: float = 0.0, dropout_dense: float = 0.0, pool_type: str = AVG_POOL,
-                 activation='relu', ignore_first_convolutional_decoder: bool = False, do_batch_norm: bool = False):
+                 activation='relu', ignore_first_convolutional_decoder: bool = False, do_batch_norm: bool = False,
+                 last_layer_activation=None, last_layer_kernel_regularizer=None, last_layer_bias_regularizer=None,
+                 last_layer_activity_regularizer=None):
 
         """
         Constructor. Instantiates a new convolutional autoencoder with the given encoder and decoder layers and builds
@@ -36,9 +38,14 @@ class Convolutional1DAutoEncoder(AutoEncoder):
         :param pool_type: a string. Either AVG_POOL" or MAX_POOL to use an Average Pooling layer or a Max Pooling
             layer.
         :param activation: Activation function to use. If you don't specify anything, no activation is applied.
-        :param do_batch_norm: whether or not to add a batch normalization layer before the output layer of the decoder.
         :param ignore_first_convolutional_decoder: a boolean. If true first convolutional layer of the encoder will not
             be added to the decoder as a deconvolutional layer.
+        :param last_layer_activation: activation function applied to the output layer, if None is given, then a linear
+                                      activation function is applied (a(x) = x).
+        :param last_layer_kernel_regularizer: regularization function applied to the output layer's kernel.
+        :param last_layer_bias_regularizer: regularization function applied to the output layer's biases.
+        :param last_layer_activity_regularizer: regularization function applied to the output layer's activation.
+        :param do_batch_norm: whether or not to add a batch normalization layer before the output layer of the decoder.
         """
         if not input_shape and input_shape[-1] < 1:
             raise ValueError('Feature number must be strictly positive. '
@@ -94,7 +101,11 @@ class Convolutional1DAutoEncoder(AutoEncoder):
             bottleneck=bottleneck,
             decoder_layers=decoder_conv_blocks,
             outputs_sequences=False,
-            do_batch_norm=do_batch_norm
+            do_batch_norm=do_batch_norm,
+            last_layer_activation=last_layer_activation,
+            last_layer_kernel_regularizer=last_layer_kernel_regularizer,
+            last_layer_bias_regularizer=last_layer_bias_regularizer,
+            last_layer_activity_regularizer=last_layer_activity_regularizer
         )
 
     def _build_encoder_conv_blocks(self, input_shape: tuple[int, ...]) -> \
@@ -266,8 +277,10 @@ class Convolutional1DAutoEncoder(AutoEncoder):
         return deconv_block
 
     def get_config(self) -> dict[str, Union[None, list[Optional[dict[str, Any]]], tuple, int]]:
+        sup_config = super(Convolutional1DAutoEncoder, self).get_config()
+        del sup_config[AutoEncoder.ENCODER_CONFIG]
+        del sup_config[AutoEncoder.DECODER_CONFIG]
         config = {
-            "input_shape": self.input_shape,
             "latent_space_dim": self.latent_space_dim,
             "conv_filters": self._conv_filters,
             "conv_kernels_size": self._conv_kernels_size,
@@ -278,7 +291,7 @@ class Convolutional1DAutoEncoder(AutoEncoder):
             "dropout_dense": self._dropout_dense,
             "activation": self._activation,
             "ignore_first_convolutional_decoder": self._ignore_first_convolutional_decoder,
-            "do_batch_norm": self._do_batch_norm
+            **sup_config
         }
         return config
 

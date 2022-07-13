@@ -4,12 +4,12 @@ from keras.layers import Dense, TimeDistributed, Layer, InputLayer, BatchNormali
 from typing import final, Optional, Union, Any, Iterable
 import tensorflow as tf
 
-
 ENCODER_MODEL_NAME: final = "Encoder"
 DECODER_MODEL_NAME: final = "Decoder"
 _BATCH_NORM_LAYER_NAME: final = "output_batch_normalization"
 _DECODER_LAYER_DEFAULT_POSTFIX = "_decoder"
 _RANDOM_SEED: final = None
+
 
 
 @tf.keras.utils.register_keras_serializable(package='autoencoder')
@@ -126,10 +126,14 @@ class AutoEncoder(Model):
     """
     This class represents a generic autoencoder model, that can be constructed with any keras layer.
     """
+    ENCODER_CONFIG: final = "encoder_config"
+    DECODER_CONFIG: final = "decoder_config"
 
     def __init__(self, input_shape: tuple[int, ...], encoder_layers: list[Layer], bottleneck: Optional[Layer] = None,
                  decoder_layers: Optional[Iterable[Layer]] = None, add_last_dense_block: bool = True,
-                 do_batch_norm: bool = False, outputs_sequences: bool = False, last_layer_activation=None):
+                 do_batch_norm: bool = False, outputs_sequences: bool = False, last_layer_activation=None,
+                 last_layer_kernel_regularizer=None, last_layer_bias_regularizer=None,
+                 last_layer_activity_regularizer=None):
         """
         Constructor. Instantiates a new autoencoder with the given encoder and decoder layers and builds it, if input
         shape is given.
@@ -149,18 +153,32 @@ class AutoEncoder(Model):
             true, input_shape[1] will be used as timesteps, and the rest of dimensions as output shape.
         :param last_layer_activation: activation function applied to the output layer, if None is given, then a linear
                                       activation function is applied (a(x) = x).
+        :param last_layer_kernel_regularizer: regularization function applied to the output layer's kernel.
+        :param last_layer_bias_regularizer: regularization function applied to the output layer's biases.
+        :param last_layer_activity_regularizer: regularization function applied to the output layer's activation.
 
         :raises ValueError: if given n_features is less than 1, if input_shape last element does not coincide with
-                            n_features or if one of the layers contained in encoder_layers or decoder_layers is an
-                            instance of InputLayer.
+                            n_features, if one of the layers contained in encoder_layers or decoder_layers is an
+                            instance of InputLayer, or if any last layer regularizers are given while
+                            add_last_dense_block=False.
         """
         if input_shape[-1] < 1:
             raise ValueError("Feature number must be strictly positive")
+        if add_last_dense_block is False and (last_layer_bias_regularizer is not None or
+                                              last_layer_kernel_regularizer is not None or
+                                              last_layer_activity_regularizer is not None or
+                                              last_layer_activation is not None):
+            raise ValueError("Regularizers and activations for last layer can be passed only if "
+                             "add_last_dense_block=True")
 
         super(AutoEncoder, self).__init__()
         self._encoder = Sequential(name=ENCODER_MODEL_NAME)
         self._decoder = Sequential(name=DECODER_MODEL_NAME)
         self._input_shape = input_shape
+        self._last_layer_activation = last_layer_activation
+        self._last_layer_kernel_regularizer = last_layer_kernel_regularizer
+        self._last_layer_bias_regularizer = last_layer_bias_regularizer
+        self._last_layer_activity_regularizer = last_layer_activity_regularizer
 
         # If autoencoder must be symmetrical
         if decoder_layers is None:
@@ -237,21 +255,34 @@ class AutoEncoder(Model):
 
                 # Add time distributed dense output layer
                 self._decoder.add(
-                    TimeDistributed(Dense(flattened_input_shape, activation=last_layer_activation), name="output_dense")
+                    TimeDistributed(Dense(
+                        flattened_input_shape,
+                        activation=last_layer_activation,
+                        kernel_regularizer=last_layer_kernel_regularizer,
+                        bias_regularizer=last_layer_bias_regularizer,
+                        activity_regularizer=last_layer_activity_regularizer
+                    ), name="output_dense")
                 )
 
                 # Reshape output to correct tensor shape (batch_size, timesteps, other dimensions...)
-                self._decoder.add(Reshape((timesteps, ) + input_shape[2:], name="output_reshape"))
+                self._decoder.add(Reshape((timesteps,) + input_shape[2:], name="output_reshape"))
 
             else:
                 # Flatten on all dimensions except for the batch size
                 flattened_input_shape = np.product(input_shape[1:])
                 decoder_output_shape_flattened = np.product(decoder_output_shape[1:])
-                self._decoder.add(Reshape((decoder_output_shape_flattened, ), name="pre_output_flatten"))
+                self._decoder.add(Reshape((decoder_output_shape_flattened,), name="pre_output_flatten"))
 
                 # Add dense output layer
                 self._decoder.add(
-                    Dense(flattened_input_shape, activation=last_layer_activation, name="output_dense")
+                    Dense(
+                        flattened_input_shape,
+                        activation=last_layer_activation,
+                        kernel_regularizer=last_layer_kernel_regularizer,
+                        bias_regularizer=last_layer_bias_regularizer,
+                        activity_regularizer=last_layer_activity_regularizer,
+                        name="output_dense"
+                    )
                 )
 
                 # Reshape output to correct tensor shape (batch_size, other dimensions...)
@@ -284,9 +315,14 @@ class AutoEncoder(Model):
 
     def get_config(self) -> dict[str, Union[None, list[Optional[dict[str, Any]]], tuple, int]]:
         config = {
+            "do_batch_norm": self.do_batch_norm,
+            "last_layer_activation": self.last_layer_activation,
+            "last_layer_kernel_regularizer": self.last_layer_kernel_regularizer,
+            "last_layer_bias_regularizer": self.last_layer_bias_regularizer,
+            "last_layer_activity_regularizer": self.last_layer_activity_regularizer,
             "input_shape": self._input_shape,
-            'encoder_config': self._encoder.get_config(),
-            'decoder_config': self._decoder.get_config()
+            AutoEncoder.ENCODER_CONFIG: self._encoder.get_config(),
+            AutoEncoder.DECODER_CONFIG: self._decoder.get_config()
         }
         return config
 
@@ -303,7 +339,10 @@ class AutoEncoder(Model):
             add_last_dense_block=False,
             do_batch_norm=False,
             outputs_sequences=False,
-            last_layer_activation=None
+            last_layer_activation=None,
+            last_layer_kernel_regularizer=None,
+            last_layer_activity_regularizer=None,
+            last_layer_bias_regularizer=None
         )
 
     def fit(self, x=None, y=None, batch_size: Optional[int] = None, epochs: int = 1, verbose: str = 'auto',
@@ -575,17 +614,63 @@ class AutoEncoder(Model):
 
     @property
     def latent_space_dim(self) -> int:
+        """
+        Returns the latent space dimension.
+
+        :return: an integer representing the latent space dimension.
+        """
         return self._latent_space_dim
 
     @property
-    def input_shape(self):
+    def input_shape(self) -> tuple:
+        """
+        Retrieves the autoencoder's input shape.
+
+        :return: a tuple of None and integers representing the input shape.
+        """
         return self._input_shape
 
     @property
-    def _do_batch_norm(self) -> bool:
+    def do_batch_norm(self) -> bool:
         try:
             self._decoder.get_layer(name=_BATCH_NORM_LAYER_NAME)
             do_batch_norm = True
         except ValueError:
             do_batch_norm = False
         return do_batch_norm
+
+    @property
+    def last_layer_kernel_regularizer(self):
+        """
+        Retrieves the last layer's kernel regularizer.
+
+        :return: the regularization function applied to the last layer's kernel, if any, None otherwise.
+        """
+        return self._last_layer_kernel_regularizer
+
+    @property
+    def last_layer_bias_regularizer(self):
+        """
+        Retrieves the last layer's bias regularizer.
+
+        :return: the regularization function applied to the last layer's biases, if any, None otherwise.
+        """
+        return self._last_layer_bias_regularizer
+
+    @property
+    def last_layer_activity_regularizer(self):
+        """
+        Retrieves the last layer's activity regularizer.
+
+        :return: the regularization function applied to the last layer's activations, if any, None otherwise.
+        """
+        return self._last_layer_activity_regularizer
+
+    @property
+    def last_layer_activation(self):
+        """
+        Retrieves the last layer's activation function.
+
+        :return: the activation function applied to the last layer, if any, None otherwise.
+        """
+        return self._last_layer_activation
