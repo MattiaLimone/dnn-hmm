@@ -383,7 +383,8 @@ class AutoEncoder(Model):
           (Dataset, generator, Sequence) is given below. If using
           `tf.distribute.experimental.ParameterServerStrategy`, only
           `DatasetCreator` type is supported for `x`.
-        y: Target data. Must be `None` in autoencoder context, since the training data is the same as the label data.
+        y: Target data. Should be equal to x in autoencoder context, since the training data is the same as the label
+            data.
         batch_size: Integer or `None`.
             Number of samples per gradient update.
             If unspecified, `batch_size` will default to 32.
@@ -563,12 +564,12 @@ class AutoEncoder(Model):
 
         ValueError: If target data tensor is given.
     """
-        if y is not None:
-            raise ValueError("AutoEncoder must fit just on input data.")
+        if y is None:
+            y = x
 
         return super(AutoEncoder, self).fit(
             x=x,
-            y=x,
+            y=y,
             batch_size=batch_size,
             epochs=epochs,
             verbose=verbose,
