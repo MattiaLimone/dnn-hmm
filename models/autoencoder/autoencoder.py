@@ -11,7 +11,6 @@ _DECODER_LAYER_DEFAULT_POSTFIX = "_decoder"
 _RANDOM_SEED: final = None
 
 
-
 @tf.keras.utils.register_keras_serializable(package='autoencoder')
 class FlattenDenseLayer(Layer):
     """
