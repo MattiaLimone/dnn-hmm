@@ -121,6 +121,7 @@ class FlattenDenseLayer(Layer):
         return config
 
 
+@tf.keras.utils.register_keras_serializable(package='autoencoder')
 class AutoEncoder(Model):
     """
     This class represents a generic autoencoder model, that can be constructed with any keras layer.
