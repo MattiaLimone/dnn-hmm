@@ -561,8 +561,6 @@ class AutoEncoder(Model):
 
         ValueError: In case of mismatch between the provided input data
             and what the model expects or when the input data is empty.
-
-        ValueError: If target data tensor is given.
     """
         if y is None:
             y = x
