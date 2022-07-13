@@ -11,7 +11,6 @@ _DECODER_LAYER_DEFAULT_POSTFIX = "_decoder"
 _RANDOM_SEED: final = None
 
 
-
 @tf.keras.utils.register_keras_serializable(package='autoencoder')
 class FlattenDenseLayer(Layer):
     """
@@ -314,6 +313,12 @@ class AutoEncoder(Model):
         return decoded
 
     def get_config(self) -> dict[str, Union[None, list[Optional[dict[str, Any]]], tuple, int]]:
+        """
+        Gets the configuration dictionary of the AutoEncoder model.
+
+        :return: a dictionary containig the AutoEncoder configuration, including two config dictionaries for encoder
+            and decoder models.
+        """
         config = {
             "do_batch_norm": self.do_batch_norm,
             "last_layer_activation": self.last_layer_activation,
@@ -328,8 +333,8 @@ class AutoEncoder(Model):
 
     @classmethod
     def from_config(cls, config, custom_objects=None):
-        encoder = Sequential.from_config(config.get('encoder_config'), custom_objects=custom_objects)
-        decoder = Sequential.from_config(config.get('decoder_config'), custom_objects=custom_objects)
+        encoder = Sequential.from_config(config.get(AutoEncoder.ENCODER_CONFIG), custom_objects=custom_objects)
+        decoder = Sequential.from_config(config.get(AutoEncoder.DECODER_CONFIG), custom_objects=custom_objects)
         input_shape = config.get('input_shape')
         return cls(
             input_shape=input_shape,
