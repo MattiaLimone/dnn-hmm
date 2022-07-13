@@ -401,6 +401,7 @@ _UNIT_TYPES_RV: final = {
 }
 
 
+@tf.keras.utils.register_keras_serializable(package='recurrent_autoencoder')
 class RecurrentAutoEncoder(AutoEncoder):
     """
     This class represents an LSTM or GRU autoencoder model.

@@ -3,11 +3,14 @@ import numpy as np
 from keras.layers import MaxPooling1D, UpSampling1D, Conv1D, Layer, BatchNormalization, AveragePooling1D, Dropout, \
     Dense, Conv1DTranspose, Reshape
 from models.autoencoder.autoencoder import FlattenDenseLayer, _RANDOM_SEED, AutoEncoder
+import tensorflow as tf
+
 
 AVG_POOL: final = "AVG"
 MAX_POOL: final = "MAX"
 
 
+@tf.keras.utils.register_keras_serializable(package='convolutional_autoencoder')
 class Convolutional1DAutoEncoder(AutoEncoder):
     """
     This class represents a 1-dimensional convolutional autoencoder model.

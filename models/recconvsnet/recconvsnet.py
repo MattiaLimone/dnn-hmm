@@ -3,6 +3,7 @@ from keras.layers import RNN, BatchNormalization, LayerNormalization, Conv1D, Ti
     Softmax, RepeatVector, Flatten, Layer, InputLayer, Dropout
 from tensorflow.python.keras.layers.pooling import Pooling1D
 from keras.models import Model, Sequential
+import tensorflow as tf
 
 
 _RECURRENT_BRANCH_NAME: final = "recurrent_branch"
@@ -10,6 +11,7 @@ _CONV_BRANCH_NAME: final = "conv_branch"
 _TAIL_NAME: final = "tail"
 
 
+@tf.keras.utils.register_keras_serializable(package='recconvsnet')
 class RecConv1DSiameseNet(Model):
     """
     This class models a recurrent-1D-convolutional double-branched neural network for time-distributed classification
