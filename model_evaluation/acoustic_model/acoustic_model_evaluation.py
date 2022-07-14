@@ -28,7 +28,7 @@ def _check_labels(speaker_indexes: dict[str, int], acoustic_models: dict[str, GM
         # For each audio of that speaker
         for audio_index in range(speaker_index*AUDIO_PER_SPEAKER, speaker_index*AUDIO_PER_SPEAKER + AUDIO_PER_SPEAKER):
 
-            # Extract audio features and
+            # Extract audio features and raw state labels
             audio = dataset[AUDIO_DATAFRAME_KEY][audio_index]
             labels = one_hot_labels_to_integer_labels([dataset[STATE_PROB_KEY][audio_index]])[0]
             _, raw_states = acoustic_model.model.decode(audio, algorithm='viterbi')
