@@ -3,6 +3,9 @@ import pickle
 import re
 from collections import OrderedDict
 from typing import Optional, final
+from sequentia import GMMHMM
+from preprocessing.acoustic_model.gmmhmm import load_acoustic_model
+from preprocessing.constants import ACOUSTIC_MODEL_PATH_MFCCS
 
 
 SPEAKER_DIR_REGEX: final = re.compile("[A-Z]{4}[0-9]")
@@ -111,3 +114,20 @@ def generate_or_load_speaker_ordered_dict(speakers: Optional[list] = None, gener
             pickle.dump(speaker_indexes, file, protocol=pickle.HIGHEST_PROTOCOL)
 
     return speaker_indexes
+
+
+def load_speakers_acoustic_models(speakers: list[str]) -> dict[str, GMMHMM]:
+    """
+    Loads all the speakers GMM-HMM acoustic models.
+
+    :param speakers: a list containing string speaker identifiers.
+    :return: a dictionary mapping each speaker identifier to a GMMHMM acoustic model.
+    """
+    acoustic_models = {}
+
+    # For each speaker, load MFCCs acoustic model
+    for speaker in speakers:
+        path = f"{ACOUSTIC_MODEL_PATH_MFCCS}{speaker}.pkl"
+        acoustic_models[speaker] = load_acoustic_model(path)
+
+    return acoustic_models

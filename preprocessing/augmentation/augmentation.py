@@ -1,6 +1,8 @@
+from typing import final
 import numpy as np
 
-DEFAULT_SCALING_FACTOR = 0.5
+
+DEFAULT_SCALING_FACTOR: final = 0.5
 
 
 def mixup(audio_features0: np.ndarray, audio_features1: np.ndarray, scaling_factor: float = DEFAULT_SCALING_FACTOR) -> \

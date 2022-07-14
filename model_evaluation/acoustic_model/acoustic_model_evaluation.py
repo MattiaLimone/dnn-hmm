@@ -1,28 +1,10 @@
 from sequentia import GMMHMM
-from preprocessing.acoustic_model.gmmhmm import load_acoustic_model
 from tqdm.auto import tqdm
 import pandas as pd
 from preprocessing.constants import TRAIN_SET_PATH_MFCCS, TEST_SET_PATH_MFCCS, AUDIO_PER_SPEAKER, AUDIO_DATAFRAME_KEY,\
-    STATE_PROB_KEY, N_STATES_MFCCS, ACOUSTIC_MODEL_PATH_MFCCS
-from preprocessing.file_utils import generate_or_load_speaker_ordered_dict
+    STATE_PROB_KEY, N_STATES_MFCCS
+from preprocessing.file_utils import generate_or_load_speaker_ordered_dict, load_speakers_acoustic_models
 from training.training_utils import load_dataset, one_hot_labels_to_integer_labels
-
-
-def _load_speakers_acoustic_models(speakers: list[str]) -> dict[str, GMMHMM]:
-    """
-    Loads all the speakers GMM-HMM acoustic models.
-
-    :param speakers: a list containing string speaker identifiers.
-    :return: a dictionary mapping each speaker identifier to a GMMHMM acoustic model.
-    """
-    acoustic_models = {}
-
-    # For each speaker, load MFCCs acoustic model
-    for speaker in speakers:
-        path = f"{ACOUSTIC_MODEL_PATH_MFCCS}{speaker}.pkl"
-        acoustic_models[speaker] = load_acoustic_model(path)
-
-    return acoustic_models
 
 
 def _check_labels(speaker_indexes: dict[str, int], acoustic_models: dict[str, GMMHMM], dataset: pd.DataFrame):
@@ -73,7 +55,7 @@ def main():
     full_dataset_mfccs = pd.concat([train_mfccs, test_mfccs], axis=0)
 
     # Load acoustic models
-    acoustic_models = _load_speakers_acoustic_models(list(speaker_indexes.keys()))
+    acoustic_models = load_speakers_acoustic_models(list(speaker_indexes.keys()))
 
     # Check validity of saved labels
     _check_labels(speaker_indexes, acoustic_models, full_dataset_mfccs)
