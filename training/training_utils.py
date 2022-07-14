@@ -89,6 +89,7 @@ def one_hot_labels_to_integer_labels(x: list[sp.lil_matrix]) -> np.ndarray:
     return labels
 
 
+@tf.keras.utils.register_keras_serializable(package='training_utils')
 def coeff_determination(y_true, y_pred):
     """
     Computes the Coefficient of Determination (also known as R^2 or R2).

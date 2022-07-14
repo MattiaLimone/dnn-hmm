@@ -3,8 +3,9 @@ import numpy as np
 import pandas as pd
 from scipy.sparse import lil_matrix
 from sequentia import GMMHMM
+from tqdm import tqdm
 from preprocessing.constants import AUDIO_DATAFRAME_KEY, TRAIN_SET_PATH_MFCCS, TRAIN_SET_PATH_MEL_SPEC, \
-    AUDIO_PER_SPEAKER, N_STATES_MFCCS
+    AUDIO_PER_SPEAKER, N_STATES_MFCCS, STATE_PROB_KEY
 from preprocessing.file_utils import generate_or_load_speaker_ordered_dict, load_speakers_acoustic_models
 from training.training_utils import load_dataset
 from preprocessing.augmentation.augmentation import mixup, DEFAULT_SCALING_FACTOR
@@ -42,7 +43,7 @@ def _generate_speaker_mixed_up_audios(feature_dataframes: list[pd.DataFrame], sp
         mixed_up_audios_shape.append((n_mixups,) + feature_dataframes[i][AUDIO_DATAFRAME_KEY].loc[0].shape)
 
     # For each speaker
-    for speaker in speaker_indexes:
+    for speaker in tqdm(speaker_indexes, desc="Generating aumented data"):
 
         # Generate empty tensor to contain the mixed up audios
         for i in range(0, len(mixed_up_audios)):
@@ -108,7 +109,7 @@ def _generate_labels(speaker_mixed_up_audio_features: dict[str, np.ndarray], aco
     max_frames = None
 
     # For each speaker
-    for speaker in speaker_indexes:
+    for speaker in tqdm(speaker_indexes, desc="Generating one-hot encoded labels for augmented data"):
 
         if max_frames is None:
             max_frames = speaker_mixed_up_audio_features[speaker].shape[1]
@@ -148,10 +149,26 @@ def _generate_output_dataframe(speaker_mixed_up_audio_features: dict[str, np.nda
     :param speaker_mixed_up_audio_labels: a dictionary mapping each speaker identifier to a list of sparse matrices
         containing the frame-level state labels.
     :return: a pandas DataFrame containing, on each row, an audio feature tensor and the corresponding frame-level state
-        labels.
+        labels, with row key equal to <speaker identifier>_<audio_index>.
     """
-    # TODO: implement this
-    pass
+
+    df = pd.DataFrame(columns=[AUDIO_DATAFRAME_KEY, STATE_PROB_KEY])
+    df[AUDIO_DATAFRAME_KEY] = df[AUDIO_DATAFRAME_KEY].astype(object)
+    df[STATE_PROB_KEY] = df[STATE_PROB_KEY].astype(object)
+
+    # For each speaker
+    for speaker in tqdm(speaker_mixed_up_audio_features, desc="Generating output dataframe for augmented data"):
+
+        # Get the audio tensor for that speaker and the corresponding labels
+        speaker_audio_feature_tensor = speaker_mixed_up_audio_features[speaker]
+        speaker_one_hot_encoded_labels = speaker_mixed_up_audio_labels[speaker]
+
+        # For each audio of the tensor
+        for i in range(0, len(speaker_audio_feature_tensor)):
+            # Get feature matrix and state labels probabilities and put them into a pandas dataframe
+            df.loc[f"{speaker}_{i}"] = (speaker_audio_feature_tensor[i], speaker_one_hot_encoded_labels[i])
+
+    return df
 
 
 def main():
