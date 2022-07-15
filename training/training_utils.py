@@ -127,9 +127,6 @@ def sparse_top_k_categorical_speaker_accuracy_mfccs(y_true, y_pred, k=N_STATES_M
       Sparse top K categorical accuracy value.
     """
 
-    # Zipped tensor to iterate over two tensor simultaneously
-    # zipped_tensor = tf.stack([y_pred, tf.cast(y_true, K.floatx())], axis=1)
-
     # Create empty output tensor to stack output for each audio
     top_k_accuracy_total_list = tf.TensorArray(dtype=tf.bool, size=0, dynamic_size=True)
 
@@ -138,21 +135,8 @@ def sparse_top_k_categorical_speaker_accuracy_mfccs(y_true, y_pred, k=N_STATES_M
         y_pred_audio = y_pred[i]
         y_true_audio = y_true[i]
 
-        '''
-        # Checks on the shape
-        y_pred_audio_rank = tf.convert_to_tensor(y_pred_audio).shape.ndims
-        y_true_rank = tf.convert_to_tensor(y_true_audio).shape.ndims
-
-        # Flatten y_pred to (batch_size, num_samples) and y_true to (num_samples,)
-        if (y_true_rank is not None) and (y_pred_audio_rank is not None):
-            if y_pred_audio_rank > 2:
-                y_pred_audio = tf.reshape(y_pred_audio, [-1, y_pred_audio.shape[-1]])
-            if y_true_rank > 1:
-                y_true_audio = tf.reshape(y_true_audio, [-1])
-        '''
-
         # Check the right range, looking the first y_true_audio element
-        first_state = y_true_audio[0]
+        first_state = tf.cast(y_true_audio[0], dtype=tf.int32)
 
         start_range = tf.subtract(
             first_state,
@@ -164,12 +148,12 @@ def sparse_top_k_categorical_speaker_accuracy_mfccs(y_true, y_pred, k=N_STATES_M
         top_k_accuracy_audio = tf.fill(tf.shape(y_true_audio), tf.convert_to_tensor(False))
         # For each state
         for state in tf.range(start_range, end_range):
-            y_pred_audio_state = tf.fill(tf.shape(y_true_audio), state)
+            y_true_audio_state = tf.fill(tf.shape(y_true_audio), state)
 
             # Calculate top_k_accuracy vector for given audio and apply logical OR with all the other states
             top_k_accuracy_audio = tf.math.logical_or(
                 top_k_accuracy_audio,
-                tf.compat.v1.math.in_top_k(y_pred_audio, tf.cast(y_pred_audio_state, 'int32'), k)
+                tf.compat.v1.math.in_top_k(y_pred_audio, tf.cast(y_true_audio_state, 'int32'), k)
             )
         # At the end of this loop, the top_k_accuracy_audio vector will contain True in i-th position if at least one
         # valid range state in the top-k most probable ones, so stack this result over the ones of the other audios
@@ -206,10 +190,6 @@ def sparse_categorical_speaker_accuracy_mfccs(y_true, y_pred, k=N_STATES_MFCCS):
     Returns:
       Sparse top K categorical accuracy value.
     """
-    # TODO: implement this
-
-    # Zipped tensor to iterate over two tensor simultaneously
-    # zipped_tensor = tf.stack([y_pred, tf.cast(y_true, K.floatx())], axis=1)
 
     # Create empty output tensor to stack output for each audio
     speaker_state_accuracy_total_list = tf.TensorArray(dtype=tf.bool, size=0, dynamic_size=True)
@@ -219,21 +199,8 @@ def sparse_categorical_speaker_accuracy_mfccs(y_true, y_pred, k=N_STATES_MFCCS):
         y_pred_audio = y_pred[i]
         y_true_audio = y_true[i]
 
-        '''
-        # Checks on the shape
-        y_pred_audio_rank = tf.convert_to_tensor(y_pred_audio).shape.ndims
-        y_true_rank = tf.convert_to_tensor(y_true_audio).shape.ndims
-
-        # Flatten y_pred to (batch_size, num_samples) and y_true to (num_samples,)
-        if (y_true_rank is not None) and (y_pred_audio_rank is not None):
-            if y_pred_audio_rank > 2:
-                y_pred_audio = tf.reshape(y_pred_audio, [-1, y_pred_audio.shape[-1]])
-            if y_true_rank > 1:
-                y_true_audio = tf.reshape(y_true_audio, [-1])
-        '''
-
         # Check the right range, looking the first y_true_audio element
-        first_state = y_true_audio[0]
+        first_state = tf.cast(y_true_audio[0], dtype=tf.int32)
         start_range = tf.subtract(
             first_state,
             tf.math.mod(first_state, tf.convert_to_tensor(N_STATES_MFCCS))
@@ -244,12 +211,12 @@ def sparse_categorical_speaker_accuracy_mfccs(y_true, y_pred, k=N_STATES_MFCCS):
         speaker_state_accuracy_audio = tf.fill(tf.shape(y_true_audio), tf.convert_to_tensor(False))
         # For each state
         for state in tf.range(start_range, end_range):
-            y_pred_audio_state = tf.fill(tf.shape(y_true_audio), state)
+            y_true_audio_state = tf.fill(tf.shape(y_true_audio), state)
 
             # Calculate top_1_accuracy vector for given audio and apply logical OR with all the other states
             speaker_state_accuracy_audio = tf.math.logical_or(
                 speaker_state_accuracy_audio,
-                tf.compat.v1.math.in_top_k(y_pred_audio, tf.cast(y_pred_audio_state, 'int32'), 1)
+                tf.compat.v1.math.in_top_k(y_pred_audio, tf.cast(y_true_audio_state, 'int32'), 1)
             )
         # At the end of this loop, the speaker_state_accuracy_audio vector will contain True in i-th position if at
         # least one valid range state in the top-k most probable ones, so stack this result over the ones of the other
@@ -288,9 +255,6 @@ def speaker_n_states_in_top_k_accuracy_mfccs(y_true, y_pred):
       Sparse top K categorical accuracy value.
     """
 
-    # Zipped tensor to iterate over two tensor simultaneously
-    # zipped_tensor = tf.stack([y_pred, tf.cast(y_true, K.floatx())], axis=1)
-
     # Create empty list to stack output for each audio
     top_k_accuracy_total_list = tf.TensorArray(dtype=K.floatx(), size=0, dynamic_size=True)
 
@@ -299,21 +263,8 @@ def speaker_n_states_in_top_k_accuracy_mfccs(y_true, y_pred):
         y_pred_audio = y_pred[i]
         y_true_audio = y_true[i]
 
-        '''
-        # Checks on the shape
-        y_pred_audio_rank = tf.convert_to_tensor(y_pred_audio).shape.ndims
-        y_true_rank = tf.convert_to_tensor(y_true_audio).shape.ndims
-
-        # Flatten y_pred to (batch_size, num_samples) and y_true to (num_samples,)
-        if (y_true_rank is not None) and (y_pred_audio_rank is not None):
-            if y_pred_audio_rank > 2:
-                y_pred_audio = tf.reshape(y_pred_audio, [-1, y_pred_audio.shape[-1]])
-            if y_true_rank > 1:
-                y_true_audio = tf.reshape(y_true_audio, [-1])
-        '''
-
         # Check the right range, looking the first y_true_audio element
-        first_state = y_true_audio[0]
+        first_state = tf.cast(y_true_audio[0], dtype=tf.int32)
         start_range = tf.subtract(
             first_state,
             tf.math.mod(first_state, tf.convert_to_tensor(N_STATES_MFCCS))
@@ -323,12 +274,12 @@ def speaker_n_states_in_top_k_accuracy_mfccs(y_true, y_pred):
         top_k_accuracy_audio = tf.fill(tf.shape(y_true_audio), tf.convert_to_tensor(0, dtype=K.floatx()))
         # For each state
         for state in tf.range(start_range, end_range):
-            y_pred_audio_state = tf.fill(tf.shape(y_true_audio), state)
+            y_true_audio_state = tf.fill(tf.shape(y_true_audio), state)
 
             # Calculate top_k_accuracy vector for given audio and apply logical OR with all the other states
             top_k_accuracy_audio = tf.add(
                 top_k_accuracy_audio,
-                tf.cast(tf.compat.v1.math.in_top_k(y_pred_audio, tf.cast(y_pred_audio_state, 'int32'), N_STATES_MFCCS),
+                tf.cast(tf.compat.v1.math.in_top_k(y_pred_audio, tf.cast(y_true_audio_state, 'int32'), N_STATES_MFCCS),
                         K.floatx())
             )
 
