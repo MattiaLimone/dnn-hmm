@@ -131,9 +131,11 @@ class DNNHMM(object):
             raise ValueError("Transition matrix must have shape (n_states, n_states)")
 
         # Check if each transition matrix sum up to 1 (since they are probabilities of transition out of a state)
+        '''
         for i in range(0, transitions.shape[0]):
             if sum(transitions[i, :]) != 1:
                 raise ValueError("Each transition matrix row must sum up to 1")
+        '''
 
     def _validate_state_frequencies(self, state_frequencies: np.ndarray):
         """
@@ -236,8 +238,10 @@ class DNNHMM(object):
         :raises ValueError: if y is not 1-dimensional or the given state range is invalid (state_range[1] -
             state_range[0] != n_states or state_range[0] < state_range[1] <= emission_model.output_shape[-1]).
         """
+        '''
         if y.ndim != 1:
             raise ValueError("Observation array must be 1-dimensional")
+        '''
         if state_range is None:
             state_range = (0, self.__emission_model.output_shape[-1])
 
