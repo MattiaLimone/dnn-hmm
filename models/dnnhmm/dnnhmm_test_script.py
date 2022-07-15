@@ -8,20 +8,25 @@ from preprocessing.file_utils import generate_or_load_speaker_ordered_dict, load
 from preprocessing.acoustic_model.gmmhmm import load_acoustic_model
 from preprocessing.constants import STATE_PROB_KEY, AUDIO_DATAFRAME_KEY, N_STATES_MFCCS, AUDIO_PER_SPEAKER
 
+
 _EPOCHS_LOAD_RECCONV: final = 1
 _VERSION_LOAD_RECCONV: final = 0.4
 _RECCONV_NET_PATH: final = f"fitted_mlp_predictor/mlp_predictor_{_EPOCHS_LOAD_RECCONV}_epochs_v{_VERSION_LOAD_RECCONV}"
+
 
 def _compute_state_frequencies(labels: np.ndarray, audios_per_speaker: int = AUDIO_PER_SPEAKER) -> tuple[np.ndarray, np.ndarray]:
     states, state_frequencies = np.unique(labels, return_counts=True)
     state_frequencies = state_frequencies.astype(dtype=np.float64)/float(labels.shape[1]*audios_per_speaker)
     return states, state_frequencies
 
+
 def main():
     # Load dataset
     train_mfccs, train_mfccs_labels = load_dataset(TRAIN_SET_PATH_MFCCS)
     test_mfccs, test_mfccs_labels = load_dataset(TEST_SET_PATH_MFCCS)
-    mfccs_labels = one_hot_labels_to_integer_labels(np.concatenate((train_mfccs_labels, test_mfccs_labels), axis=0))
+    train_mfccs_labels = one_hot_labels_to_integer_labels(train_mfccs_labels)
+    test_mfccs_labels = one_hot_labels_to_integer_labels(test_mfccs_labels)
+    mfccs_labels = np.concatenate((train_mfccs_labels, test_mfccs_labels), axis=0)
 
     speaker_indexes = generate_or_load_speaker_ordered_dict()
 
