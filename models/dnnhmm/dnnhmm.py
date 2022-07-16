@@ -316,6 +316,8 @@ class DNNHMM(object):
         t1 = np.empty((n_states, n_obs), 'd')
         t2 = np.empty((n_states, n_obs), 'b')
 
+        most_likely_path = None
+
         if mode == 'mult':
             # Initialize the tracking tables from first observation
             t1[:, 0] = pi * b[:, 0]
@@ -326,7 +328,18 @@ class DNNHMM(object):
                 t1[:, t] = np.max(t1[:, t - 1] * a.T * b[np.newaxis, :, t].T, 1)
                 t2[:, t] = np.argmax(t1[:, t - 1] * a.T, 1)
 
+            # Build the output, optimal model trajectory, backtracking from the last state
+            most_likely_path = np.empty(n_obs, 'b')
+            most_likely_path[-1] = np.argmax(t1[:, n_obs - 1])
+            for t in reversed(range(1, n_obs)):
+                most_likely_path[t - 1] = t2[most_likely_path[t], t]
+
+            return most_likely_path, t1, t2
+
         elif mode == 'log':
+            t1 = np.zeros((n_states, n_obs))
+            t2 = np.zeros((n_states, n_obs - 1)).astype(np.int32)
+
             # Convert a, b, pi to the log-domain, adding a small eps to each probability to avoid log(0)s
             eps = np.finfo(0.).tiny
             a_log = np.log(a + eps)
@@ -335,7 +348,6 @@ class DNNHMM(object):
 
             # Initialize the tracking tables from first observation
             t1[:, 0] = pi_log + b_log[:, 0]
-            t2[:, 0] = 0
 
             # Iterate through the observations and states, updating the tracking tables
             for t in range(1, n_obs):
@@ -344,17 +356,10 @@ class DNNHMM(object):
                     t1[i, t] = np.max(temp_sum) + b_log[i, t]
                     t2[i, t-1] = np.argmax(temp_sum)
 
-            '''
-            # Iterate through the observations updating the tracking tables
-            for i in range(1, n_obs):
-                t1[:, i] = np.max(t1[:, i - 1] * a.T * b[np.newaxis, :, i].T, 1)
-                t2[:, i] = np.argmax(t1[:, i - 1] * a.T, 1)
-            '''
-
-        # Build the output, optimal model trajectory, backtracking from the last state
-        most_likely_path = np.empty(n_obs, 'b')
-        most_likely_path[-1] = np.argmax(t1[:, n_obs - 1])
-        for t in reversed(range(1, n_obs)):
-            most_likely_path[t - 1] = t2[most_likely_path[t], t]
+            # Build the output, optimal model trajectory, backtracking from the last state
+            most_likely_path = np.zeros(n_obs, dtype=np.int32)
+            most_likely_path[-1] = np.argmax(t1[:, -1])
+            for t in reversed(range(0, n_obs-1)):
+                most_likely_path[t] = t2[int(most_likely_path[t + 1]), t]
 
         return most_likely_path, t1, t2
