@@ -38,7 +38,8 @@ class RecConv1DSiameseNet(Model):
                  input_shape_conv_branch: tuple[Optional[int], int, ...], tail_dense_units: int, output_dim: int,
                  tail_dense_activation='relu', add_repeat_vector_conv_branch: bool = False, dropout_dense=0.0,
                  kernel_regularizer_dense=None, bias_regularizer_dense=None, activity_regularizer_dense=None,
-                 kernel_regularizer_softmax=None, bias_regularizer_softmax=None, activity_regularizer_softmax=None):
+                 kernel_regularizer_softmax=None, bias_regularizer_softmax=None, activity_regularizer_softmax=None,
+                 add_double_dense_tail: bool = False):
         """
         Constructor. Instantiates a new RecConv1DSiameseNet model with given parameters.
 
@@ -64,6 +65,7 @@ class RecConv1DSiameseNet(Model):
         :param kernel_regularizer_dense: kernel regularizer for the last layer.
         :param bias_regularizer_dense: bias regularizer for the last layer.
         :param activity_regularizer_dense: activity regularizer for the last layer.
+        :param add_double_dense_tail: whether to add double-dense layer prior to the softmax output layer.
         :raises ValueError: if rec_branch_layers or conv_branch_layers contain any InputLayer, if input shapes are
             incorrect or if given tail_dense_units/units are invalid.
         """
@@ -90,6 +92,7 @@ class RecConv1DSiameseNet(Model):
         self.__kernel_regularizer_softmax = kernel_regularizer_softmax
         self.__bias_regularizer_softmax = bias_regularizer_softmax
         self.__activity_regularizer_softmax = activity_regularizer_softmax
+        self.__add_double_dense_tail = add_double_dense_tail
 
         # Build recurrent branch
         self.__recurrent_branch = self._build_recurrent_branch(rec_branch_layers)
@@ -186,21 +189,25 @@ class RecConv1DSiameseNet(Model):
                 Dropout(rate=self.__dropout_dense),
                 name="tail_dropout_dense_0"
             )(dense0)
-        dense1 = TimeDistributed(
-            Dense(
-                units=self.__tail_dense_units,
-                activation=self.__tail_dense_activation,
-                kernel_regularizer=self.__kernel_regularizer_dense,
-                bias_regularizer=self.__bias_regularizer_dense,
-                activity_regularizer=self.__activity_regularizer_dense,
-            ),
-            name="tail_dense1"
-        )(dense0)
-        if self.__dropout_dense > 0:
+
+        dense1 = dense0
+        if self.__add_double_dense_tail:
             dense1 = TimeDistributed(
-                Dropout(rate=self.__dropout_dense),
-                name="tail_dropout_dense_1"
-            )(dense1)
+                Dense(
+                    units=self.__tail_dense_units,
+                    activation=self.__tail_dense_activation,
+                    kernel_regularizer=self.__kernel_regularizer_dense,
+                    bias_regularizer=self.__bias_regularizer_dense,
+                    activity_regularizer=self.__activity_regularizer_dense,
+                ),
+                name="tail_dense1"
+            )(dense0)
+            if self.__dropout_dense > 0:
+                dense1 = TimeDistributed(
+                    Dropout(rate=self.__dropout_dense),
+                    name="tail_dropout_dense_1"
+                )(dense1)
+
         dense2 = TimeDistributed(
             Dense(
                 units=self.__output_dim,
@@ -369,7 +376,8 @@ class RecConv1DSiameseNet(Model):
             "activity_regularizer_dense": self.activity_regularizer_dense,
             "kernel_regularizer_softmax": self.kernel_regularizer_softmax,
             "bias_regularizer_softmax": self.bias_regularizer_softmax,
-            "activity_regularizer_softmax": self.activity_regularizer_softmax
+            "activity_regularizer_softmax": self.activity_regularizer_softmax,
+            "add_double_dense_tail": self.__add_double_dense_tail
         }
         return config_dict
 
