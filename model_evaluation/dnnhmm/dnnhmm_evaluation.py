@@ -18,10 +18,14 @@ _RECCONV_NET_PATH: final = f"fitted_mlp_predictor/mlp_predictor_{_EPOCHS_LOAD_RE
 
 def main():
     # Load test dataset
-    test_mfccs, _ = load_dataset(TEST_SET_PATH_MFCCS)
+    test_mfccs, test_mfccs_labels = load_dataset(TEST_SET_PATH_MFCCS)
+
+    # Convert one-hot encoded labels to integer labels for test set
+    test_mfccs_labels = one_hot_labels_to_integer_labels(test_mfccs_labels)
 
     # Load speaker indexes
     speaker_indexes = generate_or_load_speaker_ordered_dict()
+    speaker_keys = list(speaker_indexes.keys())
 
     # Load acoustic models
     speaker_acoustic_models = load_speakers_acoustic_models(list(speaker_indexes.keys()))
@@ -81,9 +85,19 @@ def main():
         # Store the generated model in dictionary
         speaker_dnnhmms[speaker] = final_model
 
+    count = 0  # counter for speaker identification match
     # For each test set audio tensor
     for i in range(0, test_mfccs.shape[0]):
         audio = test_mfccs[i]
+        labels = test_mfccs_labels[i]
+        best_log_likelihood = None
+        best_speaker_match = None
+
+        # Get real speaker index
+        speaker_index = int((labels[0] - labels[0] % N_STATES_MFCCS)/N_STATES_MFCCS)
+        real_speaker = speaker_keys[speaker_index]
+        real_speaker_log_likelihood = None
+
         # For each speaker
         for speaker in speaker_dnnhmms:
             # Calculate state range
@@ -97,22 +111,33 @@ def main():
                 state_range=(start_range, end_range),
                 mode='log'
             )
+
+            if speaker == real_speaker:
+                real_speaker_log_likelihood = most_likely_path_prob
+
+            # Update best_log_likelihood if found most_likely_path_prob is greater than current
+            if best_log_likelihood is None or most_likely_path_prob > best_log_likelihood:
+                best_log_likelihood = most_likely_path_prob
+                best_speaker_match = speaker
+
             # Print results with log mode (recommended)
             print("Most Likely Path")
             print(most_likely_path)
             print("Most Likely Path probabilities")
             print(most_likely_path_prob)
 
-            most_likely_path, most_likely_path_prob = dnnhmm.viterbi(
-                y=audio,
-                state_range=(start_range, end_range),
-                mode='mult'
-            )
-            # Print results with multiplication mode (not recommended)
-            print("Most Likely Path")
-            print(most_likely_path)
-            print("Most Likely Path probabilities")
-            print(most_likely_path_prob)
+        print(f"Real speaker: {real_speaker}, "
+              f" real speaker log-likelihood: {real_speaker_log_likelihood}, "
+              f"best speaker match: {best_speaker_match}, "
+              f"log-likelihood: {best_log_likelihood}")
+
+        if real_speaker == best_speaker_match:
+            count += 1
+        break
+
+    accuracy = count / test_mfccs.shape[0]
+    print(f"Number of matches: {count}")
+    print(f"Accuracy: {accuracy}")
 
 
 if __name__ == "__main__":
