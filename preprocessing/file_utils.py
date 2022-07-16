@@ -3,9 +3,10 @@ import pickle
 import re
 from collections import OrderedDict
 from typing import Optional, final
+import numpy as np
 from sequentia import GMMHMM
 from preprocessing.acoustic_model.gmmhmm import load_acoustic_model
-from preprocessing.constants import ACOUSTIC_MODEL_PATH_MFCCS
+from preprocessing.constants import ACOUSTIC_MODEL_PATH_MFCCS, STATE_FREQUENCIES_PATH
 
 
 SPEAKER_DIR_REGEX: final = re.compile("[A-Z]{4}[0-9]")
@@ -131,3 +132,31 @@ def load_speakers_acoustic_models(speakers: list[str]) -> dict[str, GMMHMM]:
         acoustic_models[speaker] = load_acoustic_model(path)
 
     return acoustic_models
+
+
+def save_state_frequencies(state_frequencies: tuple[np.ndarray, np.ndarray, np.ndarray],
+                           path: str = STATE_FREQUENCIES_PATH):
+    """
+    Saves the state frequencies to given path.
+
+    :param state_frequencies: state frequencies tuple to save.
+    :param path: path to save the state frequencies tuple into.
+    """
+    with open(path, "wb") as file:
+        pickle.dump(state_frequencies, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def load_state_frequencies(path: str = STATE_FREQUENCIES_PATH) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """
+    Loads the state frequencies tuple from the given path.
+
+    :param path: the path to load the state frequencies from.
+    :return: the loaded tuple containing: state ordered array, state absolute frequencies array and state relative
+        frequencies array.
+    """
+    try:
+        with open(path, "rb") as file:
+            state_frequencies = pickle.load(file)
+    except IOError:
+        state_frequencies = None
+    return state_frequencies
