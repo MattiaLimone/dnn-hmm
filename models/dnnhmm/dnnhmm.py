@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, final
 import keras
 import numpy as np
 
@@ -8,6 +8,8 @@ class DNNHMM(object):
     This class represents a DNN-HMM model e.g. an HMM whose observation emission probabilities P(x | s) (where x is the
      observation and s is the state) are defined by a neural network model.
     """
+
+    __MODES_VITERBI: final = {"log", "mult"}
 
     def __init__(self, transitions: np.ndarray, emission_model: keras.Model, state_frequencies: np.ndarray,
                  priors: Optional[np.ndarray] = None):
@@ -191,8 +193,8 @@ class DNNHMM(object):
             neurons of the emission models, corresponding to HMM states).
         :return: a (n_states, n_obs)-shaped emission matrix, containing the emission probabilities for each
             observation in y.
-        :raises ValueError: if the given state range is invalid (state_range[1] - state_range[0] != n_states or
-            state_range[0] < state_range[1] <= emission_model.output_shape[-1]).
+        :raises ValueError: if the given state range is invalid (state_range[1] -
+            state_range[0] != n_states or state_range[0] < state_range[1] <= emission_model.output_shape[-1]).
         """
 
         # Range of indexes of the emission model output to take into account
@@ -229,7 +231,8 @@ class DNNHMM(object):
 
         return observations_likelihood
 
-    def viterbi(self, y: np.ndarray, state_range: Optional[tuple[int, int]] = None) -> (np.ndarray, np.float64):
+    def viterbi(self, y: np.ndarray, state_range: Optional[tuple[int, int]] = None, mode: str = 'log') -> \
+            (np.ndarray, np.float64):
         """
         Computes the Viterbi estimate of state trajectory of HMM (e.g. most likely hidden state sequence, given an
         observation sequence and its probability.
@@ -238,9 +241,12 @@ class DNNHMM(object):
             algorithm for.
         :param state_range: a 2-element tuple representing the range of the states to take into account (e.g. output
             neurons of the emission models, corresponding to HMM states).
+        :param mode: either 'log' or 'mult', indicates wherever or not to make probability calculations in the log
+            domain (which is the default, and strongly recommended).
         :return: the most likely state sequence given the observations, and the corresponding posterior probability.
-        :raises ValueError: if y is not 2-dimensional or the given state range is invalid (state_range[1] -
-            state_range[0] != n_states or state_range[0] < state_range[1] <= emission_model.output_shape[-1]).
+        :raises ValueError: if mode is neither 'mult' or 'log', if y is not 2-dimensional or the given state range is
+            invalid (state_range[1] - state_range[0] != n_states or state_range[0] < state_range[1] <=
+            emission_model.output_shape[-1]).
         """
 
         if y.ndim != 2:
@@ -248,6 +254,9 @@ class DNNHMM(object):
 
         if state_range is None:
             state_range = (0, self.__emission_model.output_shape[-1])
+
+        if mode not in DNNHMM.__MODES_VITERBI:
+            raise ValueError(f"Mode must be either: {DNNHMM.__MODES_VITERBI}")
 
         # Compute emission matrix
         emission_matrix = self._compute_emission_matrix(y, state_range)
@@ -257,7 +266,8 @@ class DNNHMM(object):
             n_obs=y.shape[0],
             a=self.__transitions,
             b=emission_matrix,
-            pi=self.__priors
+            pi=self.__priors,
+            mode=mode
         )
 
         # Compute most likely state sequence probability
@@ -266,7 +276,7 @@ class DNNHMM(object):
         return most_likely_path, most_likely_path_prob
 
     @staticmethod
-    def _viterbi(n_obs: int, a: np.ndarray, b: np.ndarray, pi: Optional[np.ndarray] = None):
+    def _viterbi(n_obs: int, a: np.ndarray, b: np.ndarray, pi: Optional[np.ndarray] = None, mode: str = 'log'):
         """
         Computes the Viterbi estimate of state trajectory of HMM (e.g. most likely hidden state sequence, given an
         observation sequence.
@@ -283,6 +293,8 @@ class DNNHMM(object):
         pi: optional, (n_states,)
             Initial state probabilities: pi[i] is the probability most_likely_path[0] == i. If
             None, uniform initial distribution is assumed (pi[:] == 1/n_states).
+        mode: either 'log' or 'mult', indicates wherever or not to make probability calculations in the log
+            domain (which is the default, and strongly recommended).
 
         Returns
         -------
@@ -304,19 +316,45 @@ class DNNHMM(object):
         t1 = np.empty((n_states, n_obs), 'd')
         t2 = np.empty((n_states, n_obs), 'b')
 
-        # Initialize the tracking tables from first observation
-        t1[:, 0] = pi * b[:, 0]
-        t2[:, 0] = 0
+        if mode == 'mult':
+            # Initialize the tracking tables from first observation
+            t1[:, 0] = pi * b[:, 0]
+            t2[:, 0] = 0
 
-        # Iterate through the observations updating the tracking tables
-        for i in range(1, n_obs):
-            t1[:, i] = np.max(t1[:, i - 1] * a.T * b[np.newaxis, :, i].T, 1)
-            t2[:, i] = np.argmax(t1[:, i - 1] * a.T, 1)
+            # Iterate through the observations updating the tracking tables
+            for t in range(1, n_obs):
+                t1[:, t] = np.max(t1[:, t - 1] * a.T * b[np.newaxis, :, t].T, 1)
+                t2[:, t] = np.argmax(t1[:, t - 1] * a.T, 1)
+
+        elif mode == 'log':
+            # Convert a, b, pi to the log-domain, adding a small eps to each probability to avoid log(0)s
+            eps = np.finfo(0.).tiny
+            a_log = np.log(a + eps)
+            b_log = np.log(b + eps)
+            pi_log = np.log(pi + eps)
+
+            # Initialize the tracking tables from first observation
+            t1[:, 0] = pi_log + b_log[:, 0]
+            t2[:, 0] = 0
+
+            # Iterate through the observations and states, updating the tracking tables
+            for t in range(1, n_obs):
+                for i in range(n_states):
+                    temp_sum = a_log[:, i] + t1[:, t-1]
+                    t1[i, t] = np.max(temp_sum) + b_log[i, t]
+                    t2[i, t-1] = np.argmax(temp_sum)
+
+            '''
+            # Iterate through the observations updating the tracking tables
+            for i in range(1, n_obs):
+                t1[:, i] = np.max(t1[:, i - 1] * a.T * b[np.newaxis, :, i].T, 1)
+                t2[:, i] = np.argmax(t1[:, i - 1] * a.T, 1)
+            '''
 
         # Build the output, optimal model trajectory, backtracking from the last state
         most_likely_path = np.empty(n_obs, 'b')
         most_likely_path[-1] = np.argmax(t1[:, n_obs - 1])
-        for i in reversed(range(1, n_obs)):
-            most_likely_path[i - 1] = t2[most_likely_path[i], i]
+        for t in reversed(range(1, n_obs)):
+            most_likely_path[t - 1] = t2[most_likely_path[t], t]
 
         return most_likely_path, t1, t2

@@ -2,6 +2,7 @@ import numpy as np
 from spafe.utils import preprocessing
 import soundfile as sf
 from typing import final
+from preprocessing.constants import AUDIO_PER_SPEAKER
 
 
 MINIMUM_SILENCE_LENGTH: final = 500
@@ -57,3 +58,17 @@ def fill_audio_frames(audio_frames: np.ndarray, target_len: int, mode: int = 0) 
         added_frames += 1
 
     return target_audio
+
+
+def compute_state_frequencies(labels: np.ndarray, audios_per_speaker: int = AUDIO_PER_SPEAKER) \
+        -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Computes state frequencies for given labels array.
+
+    :param labels: frame-level state labels array with shape (n_samples, n_states) to compute the state frequencies for.
+    :param audios_per_speaker: number of audios for each speaker.
+    :return: the state ordered array, the state absolute frequencies array and the state relative frequencies array.
+    """
+    states, state_frequencies = np.unique(labels, return_counts=True)
+    state_relative_frequencies = state_frequencies / (labels.shape[1] * audios_per_speaker)
+    return states, state_frequencies, state_relative_frequencies
