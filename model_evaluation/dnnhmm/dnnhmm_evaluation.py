@@ -1,6 +1,7 @@
 from models.dnnhmm.dnnhmm import DNNHMM
 from preprocessing.utils import compute_state_frequencies
 from typing import final
+from tqdm.auto import tqdm
 import keras
 from training.training_utils import load_dataset, one_hot_labels_to_integer_labels
 from preprocessing.file_utils import generate_or_load_speaker_ordered_dict, load_speakers_acoustic_models, \
@@ -11,10 +12,10 @@ from training.training_utils import sparse_top_k_categorical_speaker_accuracy_mf
     speaker_n_states_in_top_k_accuracy_mfccs, sparse_categorical_speaker_accuracy_mfccs
 
 
-_EPOCHS_LOAD_RECCONV: final = 1
-_VERSION_LOAD_RECCONV: final = 0.4
-_RECCONV_NET_PATH: final = f"fitted_mlp_predictor/mlp_predictor_{_EPOCHS_LOAD_RECCONV}_epochs_v{_VERSION_LOAD_RECCONV}"
-
+_EPOCHS_LOAD_RECCONV: final = 1000
+_VERSION_LOAD_RECCONV: final = 0.2
+_RECCONV_NET_PATH: final = f"fitted_recconvsnet/lstm_predictor_{_EPOCHS_LOAD_RECCONV}_epochs_v{_VERSION_LOAD_RECCONV}"
+_VERBOSE: final = False
 
 def main():
     # Load test dataset
@@ -87,7 +88,7 @@ def main():
 
     count = 0  # counter for speaker identification match
     # For each test set audio tensor
-    for i in range(0, test_mfccs.shape[0]):
+    for i in tqdm(range(0, test_mfccs.shape[0]), desc="Evaluating DNN-HMM performance"):
         audio = test_mfccs[i]
         labels = test_mfccs_labels[i]
         best_log_likelihood = None
@@ -120,11 +121,12 @@ def main():
                 best_log_likelihood = most_likely_path_prob
                 best_speaker_match = speaker
 
-            # Print results with log mode (recommended)
-            print("Most Likely Path")
-            print(most_likely_path)
-            print("Most Likely Path probabilities")
-            print(most_likely_path_prob)
+            if _VERBOSE is True:
+                # Print results with log mode (recommended)
+                print("Most Likely Path")
+                print(most_likely_path)
+                print("Most Likely Path probabilities")
+                print(most_likely_path_prob)
 
         print(f"Real speaker: {real_speaker}, "
               f" real speaker log-likelihood: {real_speaker_log_likelihood}, "
@@ -133,7 +135,7 @@ def main():
 
         if real_speaker == best_speaker_match:
             count += 1
-        break
+        #break
 
     accuracy = count / test_mfccs.shape[0]
     print(f"Number of matches: {count}")
