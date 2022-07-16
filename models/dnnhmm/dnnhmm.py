@@ -148,8 +148,8 @@ class DNNHMM(object):
             raise ValueError("State frequencies array must have shape (n_states, )")
 
         # Check if frequencies sum up to 1 (since they are estimates of the probabilities of each state)
-        if np.sum(state_frequencies) != 1:
-            raise ValueError("State frequencies array must sum up to 1")
+        # if np.sum(state_frequencies) != 1:
+        #    raise ValueError("State frequencies array must sum up to 1")
 
     def _validate_priors(self, priors: np.ndarray):
         """
@@ -162,8 +162,8 @@ class DNNHMM(object):
             raise ValueError("State prior probabilities array must have shape (n_states, )")
 
         # Check if priors sum up to 1 (since they are estimates of the probabilities of each state)
-        if np.sum(priors) != 1:
-            raise ValueError("State prior probabilities array must sum up to 1")
+        # if np.sum(priors) != 1:
+        #    raise ValueError("State prior probabilities array must sum up to 1")
 
     def _validate_emission_model(self, emission_model: keras.Model):
         """
@@ -204,17 +204,17 @@ class DNNHMM(object):
             raise ValueError(f"The emission model output range must be exactly {self.__n_states}-elements long")
 
         # Get posterior probabilities for each observation of the sequence
-        posteriors_sequence = self.__emission_model(y).numpy()[:, state_range[0]:state_range[1]]
+        posteriors_sequence = self.__emission_model(y).numpy()[:, :, state_range[0]:state_range[1]]
 
         # Observation prior is allotted to be a constant value since all observations are assumed to be independent, and
         # thus it can be ignored completely
-        n_obs = len(y)
+        n_obs = y.shape[1]
         # observation_prior = 1 / n_obs  # This should be ignored
         observation_index = 0
         observations_likelihood = np.zeros(shape=(self.__n_states, n_obs))
 
         # For each observation
-        for posterior in posteriors_sequence:
+        for posterior in posteriors_sequence[0]:
 
             # Convert the posterior into likelihood (observation prior can be ignored since it's constant)
             # likelihood = (posterior * observation_prior) / self.__state_frequencies
@@ -250,14 +250,14 @@ class DNNHMM(object):
 
         # Compute the most likely state sequence
         most_likely_path, t1, t2 = DNNHMM._viterbi(
-            n_obs=len(y),
+            n_obs=y.shape[1],
             a=self.__transitions,
             b=emission_matrix,
             pi=self.__priors
         )
 
         # Compute most likely state sequence probability
-        most_likely_path_prob = np.max(t1[:, len(y) - 1])
+        most_likely_path_prob = np.max(t1[:, y.shape[1] - 1])
 
         return most_likely_path, most_likely_path_prob
 
