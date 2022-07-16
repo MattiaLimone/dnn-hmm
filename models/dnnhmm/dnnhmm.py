@@ -185,7 +185,8 @@ class DNNHMM(object):
         Computes emission matrix for given observations, taking into account states in the given range (e.g. output
         neurons of the emission models, corresponding to HMM states).
 
-        :param y: a numpy array of shape (n_obs, ) representing observation sequence to compute the emission matrix for.
+        :param y: a numpy array of shape (n_obs, n_features) representing observation sequence to compute the emission
+            matrix for.
         :param state_range: a 2-element tuple representing the range of the states to take into account (e.g. output
             neurons of the emission models, corresponding to HMM states).
         :return: a (n_states, n_obs)-shaped emission matrix, containing the emission probabilities for each
@@ -204,17 +205,19 @@ class DNNHMM(object):
             raise ValueError(f"The emission model output range must be exactly {self.__n_states}-elements long")
 
         # Get posterior probabilities for each observation of the sequence
-        posteriors_sequence = self.__emission_model(y).numpy()[:, :, state_range[0]:state_range[1]]
+        posteriors_sequence = self.__emission_model(
+            np.expand_dims(y, axis=0)
+        ).numpy()[0, :, state_range[0]:state_range[1]]
 
         # Observation prior is allotted to be a constant value since all observations are assumed to be independent, and
         # thus it can be ignored completely
-        n_obs = y.shape[1]
+        n_obs = y.shape[0]
         # observation_prior = 1 / n_obs  # This should be ignored
         observation_index = 0
         observations_likelihood = np.zeros(shape=(self.__n_states, n_obs))
 
         # For each observation
-        for posterior in posteriors_sequence[0]:
+        for posterior in posteriors_sequence:
 
             # Convert the posterior into likelihood (observation prior can be ignored since it's constant)
             # likelihood = (posterior * observation_prior) / self.__state_frequencies
@@ -231,17 +234,18 @@ class DNNHMM(object):
         Computes the Viterbi estimate of state trajectory of HMM (e.g. most likely hidden state sequence, given an
         observation sequence and its probability.
 
-        :param y: a numpy array of shape (n_obs, ) representing observation sequence to compute the emission matrix for.
+        :param y: a numpy array of shape (n_obs, n_features) representing observation sequence to compute the viterbi
+            algorithm for.
         :param state_range: a 2-element tuple representing the range of the states to take into account (e.g. output
             neurons of the emission models, corresponding to HMM states).
         :return: the most likely state sequence given the observations, and the corresponding posterior probability.
-        :raises ValueError: if y is not 1-dimensional or the given state range is invalid (state_range[1] -
+        :raises ValueError: if y is not 2-dimensional or the given state range is invalid (state_range[1] -
             state_range[0] != n_states or state_range[0] < state_range[1] <= emission_model.output_shape[-1]).
         """
-        '''
-        if y.ndim != 1:
+
+        if y.ndim != 2:
             raise ValueError("Observation array must be 1-dimensional")
-        '''
+
         if state_range is None:
             state_range = (0, self.__emission_model.output_shape[-1])
 
@@ -250,14 +254,14 @@ class DNNHMM(object):
 
         # Compute the most likely state sequence
         most_likely_path, t1, t2 = DNNHMM._viterbi(
-            n_obs=y.shape[1],
+            n_obs=y.shape[0],
             a=self.__transitions,
             b=emission_matrix,
             pi=self.__priors
         )
 
         # Compute most likely state sequence probability
-        most_likely_path_prob = np.max(t1[:, y.shape[1] - 1])
+        most_likely_path_prob = np.max(t1[:, y.shape[0] - 1])
 
         return most_likely_path, most_likely_path_prob
 
@@ -290,6 +294,8 @@ class DNNHMM(object):
         t2: array (n_states, n_obs)
             the x_j-1 of the most likely path so far
         """
+        # TODO: modify this to work in log-domain to avoid too much zeros (caused by multiple prob multiplications)
+
         # Cardinality of the state space
         n_states = a.shape[0]
 

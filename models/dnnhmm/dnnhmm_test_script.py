@@ -63,13 +63,11 @@ def main():
 
         # Iterate over the audio tensors
         for index in range(audio_range, audio_range + AUDIO_PER_SPEAKER):
-            # qui c'è un problema con le dimensioni
-            # expand_dims perché la rete vuole un tensore del tipo (batch_size, timesteps, coeff)
             most_likely_path, most_likely_path_prob = final_model.viterbi(
-                y=np.expand_dims(mfccs[index], axis=0),
+                y=mfccs[index],
                 state_range=(start_range, end_range)
             )
-            # stampo i risultati
+            # Print results
             print("Most Likely Path")
             print(most_likely_path)
             print("Most Likely Path probabilities")
