@@ -1,16 +1,9 @@
-import pickle
-
 from keras import Sequential, regularizers
-from sequentia import GMMHMM
-from tqdm.auto import tqdm
 import keras.models
-import keras.metrics.metrics
+import keras.metrics
 import tensorflow as tf
 from typing import final
-import pandas as pd
-
-from models.autoencoder.autoencoder import FlattenDenseLayer
-from models.recconvsnet.recconvsnet import RecConv1DSiameseNet
+from models.recconvsnet.recconvsnet import RecConv1DSiameseNet, load_recconvsnet
 from preprocessing.constants import TRAIN_SET_PATH_MFCCS, TEST_SET_PATH_MFCCS, AUDIO_PER_SPEAKER, AUDIO_DATAFRAME_KEY,\
     STATE_PROB_KEY, N_STATES_MFCCS
 from preprocessing.file_utils import generate_or_load_speaker_ordered_dict, load_speakers_acoustic_models
@@ -35,9 +28,13 @@ def main():
     total_state_number = get_label_number(train_mfccs_labels)
 
     dropout_rate = 0.5
-
+    model = load_recconvsnet(path=_RECCONV_NET_PATH, custom_objects={
+        "speaker_n_states_in_top_k_accuracy_mfccs": speaker_n_states_in_top_k_accuracy_mfccs,
+        "sparse_top_k_categorical_speaker_accuracy_mfccs": sparse_top_k_categorical_speaker_accuracy_mfccs
+    })
+    '''
     model = keras.models.load_model(_RECCONV_NET_PATH, custom_objects={"RecConv1DSiameseNet": RecConv1DSiameseNet})
-
+    
     model_copy = RecConv1DSiameseNet(
         rec_branch_layers=model.get_layer("recurrent_branch").layers,
         conv_branch_layers=model.get_layer("conv_branch").layers,
@@ -54,7 +51,7 @@ def main():
     )
     model_copy.set_weights(model.get_weights())
     model = model_copy
-
+    '''
 
 
     #model_copy = RecConv1DSiameseNet.from_config(model.get_config())

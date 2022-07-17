@@ -1,8 +1,7 @@
 from keras import regularizers
-from keras.utils import custom_object_scope
 import tensorflow as tf
 from models.dnnhmm.dnnhmm import DNNHMM
-from models.recconvsnet.recconvsnet import RecConv1DSiameseNet
+from models.recconvsnet.recconvsnet import RecConv1DSiameseNet, load_recconvsnet
 from preprocessing.utils import compute_state_frequencies
 from typing import final
 from tqdm.auto import tqdm
@@ -27,7 +26,6 @@ _COUNT_START_INDEX: final = 424
 def main():
     # Load test dataset
     test_mfccs, test_mfccs_labels = load_dataset(TEST_SET_PATH_MFCCS)
-    total_state_number = get_label_number(test_mfccs_labels)
     test_mel_spec, _ = load_dataset(TEST_SET_PATH_MEL_SPEC)
 
     # Convert one-hot encoded labels to integer labels for test set
@@ -65,32 +63,10 @@ def main():
         states, state_frequencies, state_relative_frequencies = state_frequencies_tuple
 
     # Load neural network emission model
-    with custom_object_scope({"RecConv1DSiameseNet": RecConv1DSiameseNet}):
-        model = keras.models.load_model(_RECCONV_NET_PATH, custom_objects={
-            "sparse_top_k_categorical_speaker_accuracy_mfccs": sparse_top_k_categorical_speaker_accuracy_mfccs,
-            "speaker_n_states_in_top_k_accuracy_mfccs": speaker_n_states_in_top_k_accuracy_mfccs,
-            "sparse_categorical_speaker_accuracy_mfccs": sparse_categorical_speaker_accuracy_mfccs})
-    dropout_rate = 0.5
-    model_copy = RecConv1DSiameseNet(
-        rec_branch_layers=model.get_layer("recurrent_branch").layers,
-        conv_branch_layers=model.get_layer("conv_branch").layers,
-        input_shape_rec_branch=(None,) + test_mfccs.shape[1:],
-        input_shape_conv_branch=(None,) + test_mel_spec.shape[1:],
-        tail_dense_units=total_state_number,
-        output_dim=total_state_number,
-        tail_dense_activation=tf.keras.layers.LeakyReLU(alpha=0.1),
-        add_repeat_vector_conv_branch=False,
-        kernel_regularizer_dense=regularizers.L1(1e-4),
-        activity_regularizer_softmax=regularizers.L1(1e-4),
-        dropout_dense=dropout_rate,
-        add_double_dense_tail=False
-    )
-    model_copy.set_weights(model.get_weights())
-    model = model_copy
-    model.compile()
-    model([keras.Input(test_mfccs.shape[1:]), keras.Input(test_mel_spec.shape[1:])])
-    #model.fit(x=[test_mfccs[:1], test_mel_spec[:1]], y=test_mfccs[:1], epochs=1)
-
+    model = load_recconvsnet(path=_RECCONV_NET_PATH, custom_objects={
+        "speaker_n_states_in_top_k_accuracy_mfccs": speaker_n_states_in_top_k_accuracy_mfccs,
+        "sparse_top_k_categorical_speaker_accuracy_mfccs": sparse_top_k_categorical_speaker_accuracy_mfccs
+    })
 
     speaker_dnnhmms = {}
     # Generate speaker DNNHMM models
@@ -160,6 +136,7 @@ def main():
                 print("Most Likely Path probabilities")
                 print(most_likely_path_prob)
 
+
         print(f"Real speaker: {real_speaker}, "
               f" real speaker log-likelihood: {real_speaker_log_likelihood}, "
               f"best speaker match: {best_speaker_match}, "
@@ -167,7 +144,8 @@ def main():
 
         if real_speaker == best_speaker_match:
             count += 1
-        #break
+
+        break
 
     accuracy = count / test_mfccs.shape[0]
     print(f"Number of matches: {count}")

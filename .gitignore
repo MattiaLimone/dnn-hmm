@@ -194,3 +194,4 @@ data/cleaned
 /fitted_recconvsnet/
 /fitted_mlp_predictor/
 /acoustic_models/
+/graph/
