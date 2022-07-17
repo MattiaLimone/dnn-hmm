@@ -432,17 +432,25 @@ class RecConv1DSiameseNet(Model):
         )
 
 
-def load_recconvsnet(path: str) -> RecConv1DSiameseNet:
+def load_recconvsnet(path: str, custom_objects: Optional[dict] = None) -> RecConv1DSiameseNet:
     """
     Loads RecConv1DSiameseNet from given path.
 
     :param path: path to load the network from.
+    :param custom_objects: additional custom objects to load.
     :return: the loaded RecConv1DSiameseNet instance with stored weights and configuration.
     """
-    model = keras.models.load_model(path, custom_objects={
-        "RecConv1DSiameseNet": RecConv1DSiameseNet,
-        "FlattenDenseLayer": FlattenDenseLayer
-    })
+    if custom_objects is None:
+        model = keras.models.load_model(path, custom_objects={
+            "RecConv1DSiameseNet": RecConv1DSiameseNet,
+            "FlattenDenseLayer": FlattenDenseLayer
+        })
+    else:
+        model = keras.models.load_model(path, custom_objects={
+            "RecConv1DSiameseNet": RecConv1DSiameseNet,
+            "FlattenDenseLayer": FlattenDenseLayer,
+            **custom_objects
+        })
     config = model.get_config()
     weights = model.get_weights()
     input_rec_branch = keras.Input(config.get("input_shape_rec_branch")[1:])
@@ -451,4 +459,3 @@ def load_recconvsnet(path: str) -> RecConv1DSiameseNet:
     model.set_weights(weights)
     model([input_rec_branch, input_conv_branch])  # to setup model output_shape
     return model
-
