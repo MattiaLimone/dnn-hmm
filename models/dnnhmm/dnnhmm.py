@@ -182,7 +182,8 @@ class DNNHMM(object):
             raise ValueError("Emission model mus")
         pass
 
-    def _compute_emission_matrix(self, y: np.ndarray, state_range: tuple[int, int]) -> np.ndarray:
+    def _compute_emission_matrix(self, y: np.ndarray, state_range: tuple[int, int], *additional_model_args) -> \
+            np.ndarray:
         """
         Computes emission matrix for given observations, taking into account states in the given range (e.g. output
         neurons of the emission models, corresponding to HMM states).
@@ -191,6 +192,7 @@ class DNNHMM(object):
             matrix for.
         :param state_range: a 2-element tuple representing the range of the states to take into account (e.g. output
             neurons of the emission models, corresponding to HMM states).
+        :param additional_model_args: additional arguments to be passed in input to the emission model.
         :return: a (n_states, n_obs)-shaped emission matrix, containing the emission probabilities for each
             observation in y.
         :raises ValueError: if the given state range is invalid (state_range[1] -
@@ -206,10 +208,16 @@ class DNNHMM(object):
         if state_range[1] - state_range[0] != self.__n_states:
             raise ValueError(f"The emission model output range must be exactly {self.__n_states}-elements long")
 
+        emission_model_args = np.expand_dims(y, axis=0)
+        if len(additional_model_args) != 0:
+            emission_model_args = [emission_model_args, *additional_model_args]
+
         # Get posterior probabilities for each observation of the sequence
-        posteriors_sequence = self.__emission_model(
-            np.expand_dims(y, axis=0)
-        ).numpy()[0, :, state_range[0]:state_range[1]]
+        posteriors_sequence = self.__emission_model(emission_model_args)
+        if isinstance(posteriors_sequence, np.ndarray):
+            posteriors_sequence = posteriors_sequence[0, :, state_range[0]:state_range[1]]
+        else:
+            posteriors_sequence = posteriors_sequence.numpy()[0, :, state_range[0]:state_range[1]]
 
         # Observation prior is allotted to be a constant value since all observations are assumed to be independent, and
         # thus it can be ignored completely
@@ -231,7 +239,8 @@ class DNNHMM(object):
 
         return observations_likelihood
 
-    def viterbi(self, y: np.ndarray, state_range: Optional[tuple[int, int]] = None, mode: str = 'log') -> \
+    def viterbi(self, y: np.ndarray, state_range: Optional[tuple[int, int]] = None, mode: str = 'log',
+                *additional_model_args) -> \
             (np.ndarray, np.float64):
         """
         Computes the Viterbi estimate of state trajectory of HMM (e.g. most likely hidden state sequence, given an
@@ -243,6 +252,7 @@ class DNNHMM(object):
             neurons of the emission models, corresponding to HMM states).
         :param mode: either 'log' or 'mult', indicates wherever or not to make probability calculations in the log
             domain (which is the default, and strongly recommended).
+        :param additional_model_args: additional arguments to be passed in input to the emission model.
         :return: the most likely state sequence given the observations, and the corresponding posterior probability.
         :raises ValueError: if mode is neither 'mult' or 'log', if y is not 2-dimensional or the given state range is
             invalid (state_range[1] - state_range[0] != n_states or state_range[0] < state_range[1] <=
@@ -259,7 +269,7 @@ class DNNHMM(object):
             raise ValueError(f"Mode must be either: {DNNHMM.__MODES_VITERBI}")
 
         # Compute emission matrix
-        emission_matrix = self._compute_emission_matrix(y, state_range)
+        emission_matrix = self._compute_emission_matrix(y, state_range, *additional_model_args)
 
         # Compute the most likely state sequence
         most_likely_path, t1, t2 = DNNHMM._viterbi(

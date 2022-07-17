@@ -1,9 +1,13 @@
 from typing import Optional, Any, Union, final
+import keras
+import keras.saving.saved_model.layer_serialization
 from keras.layers import RNN, BatchNormalization, LayerNormalization, Conv1D, TimeDistributed, Concatenate, Dense, \
     Softmax, RepeatVector, Flatten, Layer, InputLayer, Dropout
 from tensorflow.python.keras.layers.pooling import Pooling1D
 from keras.models import Model, Sequential
 import tensorflow as tf
+import json
+from models.autoencoder.autoencoder import FlattenDenseLayer
 
 
 _RECURRENT_BRANCH_NAME: final = "recurrent_branch"
@@ -355,7 +359,8 @@ class RecConv1DSiameseNet(Model):
         return self.__conv_branch.layers
 
     def call(self, inputs, training=None, mask=None):
-        rec_branch_input, conv_branch_input = inputs
+        rec_branch_input = inputs[0]
+        conv_branch_input = inputs[1]
         rec_output = self.__recurrent_branch(rec_branch_input)
         conv_output = self.__conv_branch(conv_branch_input)
         return self.__tail([rec_output, conv_output])
@@ -383,6 +388,16 @@ class RecConv1DSiameseNet(Model):
 
     @classmethod
     def from_config(cls, config, custom_objects=None):
+        rec_branch_layers = config.get('rec_branch_layers')
+        conv_branch_layers = config.get('conv_branch_layers')
+
+        for i in range(0, len(rec_branch_layers)):
+            if isinstance(rec_branch_layers[i], dict):
+                rec_branch_layers[i] = keras.models.model_from_json(json.dumps(rec_branch_layers[i]))
+        for i in range(0, len(conv_branch_layers)):
+            if isinstance(conv_branch_layers[i], dict):
+                conv_branch_layers[i] = keras.models.model_from_json(json.dumps(conv_branch_layers[i]))
+
         return cls(**config)
 
     def summary(self, line_length=None, positions=None, print_fn=None, expand_nested: bool = True,
@@ -415,3 +430,25 @@ class RecConv1DSiameseNet(Model):
             expand_nested=expand_nested,
             show_trainable=show_trainable
         )
+
+
+def load_recconvsnet(path: str) -> RecConv1DSiameseNet:
+    """
+    Loads RecConv1DSiameseNet from given path.
+
+    :param path: path to load the network from.
+    :return: the loaded RecConv1DSiameseNet instance with stored weights and configuration.
+    """
+    model = keras.models.load_model(path, custom_objects={
+        "RecConv1DSiameseNet": RecConv1DSiameseNet,
+        "FlattenDenseLayer": FlattenDenseLayer
+    })
+    config = model.get_config()
+    weights = model.get_weights()
+    input_rec_branch = keras.Input(config.get("input_shape_rec_branch")[1:])
+    input_conv_branch = keras.Input(config.get("input_shape_conv_branch")[1:])
+    model = RecConv1DSiameseNet.from_config(config)
+    model.set_weights(weights)
+    model([input_rec_branch, input_conv_branch])  # to setup model output_shape
+    return model
+

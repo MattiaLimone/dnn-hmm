@@ -1,14 +1,18 @@
 from typing import final
+
+import keras
 from keras.callbacks import EarlyStopping
 from keras.optimizers import Adadelta
 from matplotlib import pyplot
-from tensorflow import keras
 from models.autoencoder.recurrent_autoencoder import RecurrentAutoEncoder
-from training_utils import load_dataset, TRAIN_SET_PATH_MFCCS, TEST_SET_PATH_MFCCS
+from training_utils import load_dataset, TRAIN_SET_PATH_MFCCS, TEST_SET_PATH_MFCCS, coeff_determination
 
 
 _VALIDATION_PERCENTAGE: final = 0.05
 _SPARSITY_NORM_THRESHOLD: final = 1e-4
+_EPOCHS_LOAD_REC: final = 700
+_VERSION_LOAD_REC: final = 1.1
+_REC_AUTOENC_PATH: final = f"fitted_autoencoder/lstm/autoencoder_lstm_{_EPOCHS_LOAD_REC}_epochs_v{_VERSION_LOAD_REC}"
 
 
 def main():
@@ -30,7 +34,7 @@ def main():
     recurrent_dropout = 0.0
 
     # Set model training parameters
-    epochs = 1000
+    epochs = 100
     batch_size = 100
     optimizer = Adadelta(
         learning_rate=1,
@@ -39,29 +43,33 @@ def main():
     )
     loss = 'mae'
     callbacks = [
-        EarlyStopping(monitor='loss', patience=50, min_delta=0.001, restore_best_weights=True)
+        EarlyStopping(monitor='val_loss', patience=50, min_delta=0.001, restore_best_weights=True)
     ]
-    version = 1.0  # For easy saving of multiple model versions
+    metrics = [coeff_determination]
+    version = 1.1  # For easy saving of multiple model versions
 
     # Instantiate the model and compile it
-    model = RecurrentAutoEncoder(
-        input_shape=input_shape,
-        unit_types=unit_types,
-        recurrent_units=recurrent_units,
-        activations=activations,
-        latent_space_dim=latent_space_dim,
-        bottleneck_unit_type=bottleneck_unit_type,
-        bottleneck_activation=bottleneck_activation,
-        recurrent_units_dropout=recurrent_units_dropout,
-        recurrent_dropout=recurrent_dropout,
-        bottleneck_returns_sequences=True,
-        do_batch_norm=True
-    )
-    model.summary(expand_nested=True)
-    model.compile(optimizer=optimizer, loss=loss)
-    model = keras.models.load_model('fitted_autoencoder/autoencoder_cnn_750_epochs')
+    retraining = int(input("Insert 0 for training and 1 for retraining: "))
+    if retraining == 0:
+        model = RecurrentAutoEncoder(
+            input_shape=input_shape,
+            unit_types=unit_types,
+            recurrent_units=recurrent_units,
+            activations=activations,
+            latent_space_dim=latent_space_dim,
+            bottleneck_unit_type=bottleneck_unit_type,
+            bottleneck_activation=bottleneck_activation,
+            recurrent_units_dropout=recurrent_units_dropout,
+            recurrent_dropout=recurrent_dropout,
+            bottleneck_returns_sequences=True,
+            do_batch_norm=True
+        )
+    else:
+        model = keras.models.load_model(_REC_AUTOENC_PATH)
 
-    # Train the model
+    model.summary(expand_nested=True)
+    model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+
     history = model.fit(
         x=train_audio_tensor_numpy,
         y=train_audio_tensor_numpy,
@@ -71,7 +79,6 @@ def main():
         callbacks=callbacks,
         validation_data=(test_audio_tensor_numpy, test_audio_tensor_numpy)
     )
-
     # Plot results
     pyplot.plot(history.history['loss'], label='train')
     pyplot.plot(history.history['val_loss'], label='test')
@@ -79,7 +86,10 @@ def main():
     pyplot.show()
 
     # Save the autoencoder to file
-    model.save(f'data/fitted_autoencoder/lstm/autoencoder_lstm_{epochs}_epochs_v{version}')
+    if retraining == 0:
+        model.save(f'fitted_autoencoder/lstm/autoencoder_lstm_{epochs}_epochs_v{version}')
+    else:
+        model.save(f'fitted_autoencoder/lstm/autoencoder_lstm_{epochs + _EPOCHS_LOAD_REC}_epochs_v{version}')
 
 
 if __name__ == "__main__":
