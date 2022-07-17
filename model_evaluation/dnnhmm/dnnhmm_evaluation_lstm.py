@@ -1,34 +1,25 @@
-from keras import regularizers
-from keras.utils import custom_object_scope
-import tensorflow as tf
 from models.dnnhmm.dnnhmm import DNNHMM
-from models.recconvsnet.recconvsnet import RecConv1DSiameseNet
 from preprocessing.utils import compute_state_frequencies
 from typing import final
 from tqdm.auto import tqdm
 import keras
-from training.training_utils import load_dataset, one_hot_labels_to_integer_labels, get_label_number
+from training.training_utils import load_dataset, one_hot_labels_to_integer_labels
 from preprocessing.file_utils import generate_or_load_speaker_ordered_dict, load_speakers_acoustic_models, \
     load_state_frequencies, save_state_frequencies
 from preprocessing.constants import UNSPLITTED_SET_PATH_MFCCS, N_STATES_MFCCS, AUDIO_PER_SPEAKER, TEST_SET_PATH_MFCCS, \
-    STATE_FREQUENCIES_PATH, TEST_SET_PATH_MEL_SPEC
+    STATE_FREQUENCIES_PATH
 from training.training_utils import sparse_top_k_categorical_speaker_accuracy_mfccs, \
     speaker_n_states_in_top_k_accuracy_mfccs, sparse_categorical_speaker_accuracy_mfccs
 
 
-_EPOCHS_LOAD_RECCONV: final = 600
-_VERSION_LOAD_RECCONV: final = 1.1
-_RECCONV_NET_PATH: final = f"fitted_recconvsnet/recconvsnet_{_EPOCHS_LOAD_RECCONV}_epochs_v{_VERSION_LOAD_RECCONV}"
+_EPOCHS_LOAD_RECCONV: final = 1000
+_VERSION_LOAD_RECCONV: final = 0.2
+_RECCONV_NET_PATH: final = f"fitted_recconvsnet/lstm_predictor_{_EPOCHS_LOAD_RECCONV}_epochs_v{_VERSION_LOAD_RECCONV}"
 _VERBOSE: final = False
-_AUDIO_START_INDEX: final = 433
-_COUNT_START_INDEX: final = 424
-
 
 def main():
     # Load test dataset
     test_mfccs, test_mfccs_labels = load_dataset(TEST_SET_PATH_MFCCS)
-    total_state_number = get_label_number(test_mfccs_labels)
-    test_mel_spec, _ = load_dataset(TEST_SET_PATH_MEL_SPEC)
 
     # Convert one-hot encoded labels to integer labels for test set
     test_mfccs_labels = one_hot_labels_to_integer_labels(test_mfccs_labels)
@@ -65,32 +56,10 @@ def main():
         states, state_frequencies, state_relative_frequencies = state_frequencies_tuple
 
     # Load neural network emission model
-    with custom_object_scope({"RecConv1DSiameseNet": RecConv1DSiameseNet}):
-        model = keras.models.load_model(_RECCONV_NET_PATH, custom_objects={
-            "sparse_top_k_categorical_speaker_accuracy_mfccs": sparse_top_k_categorical_speaker_accuracy_mfccs,
-            "speaker_n_states_in_top_k_accuracy_mfccs": speaker_n_states_in_top_k_accuracy_mfccs,
-            "sparse_categorical_speaker_accuracy_mfccs": sparse_categorical_speaker_accuracy_mfccs})
-    dropout_rate = 0.5
-    model_copy = RecConv1DSiameseNet(
-        rec_branch_layers=model.get_layer("recurrent_branch").layers,
-        conv_branch_layers=model.get_layer("conv_branch").layers,
-        input_shape_rec_branch=(None,) + test_mfccs.shape[1:],
-        input_shape_conv_branch=(None,) + test_mel_spec.shape[1:],
-        tail_dense_units=total_state_number,
-        output_dim=total_state_number,
-        tail_dense_activation=tf.keras.layers.LeakyReLU(alpha=0.1),
-        add_repeat_vector_conv_branch=False,
-        kernel_regularizer_dense=regularizers.L1(1e-4),
-        activity_regularizer_softmax=regularizers.L1(1e-4),
-        dropout_dense=dropout_rate,
-        add_double_dense_tail=False
-    )
-    model_copy.set_weights(model.get_weights())
-    model = model_copy
-    model.compile()
-    model([keras.Input(test_mfccs.shape[1:]), keras.Input(test_mel_spec.shape[1:])])
-    #model.fit(x=[test_mfccs[:1], test_mel_spec[:1]], y=test_mfccs[:1], epochs=1)
-
+    model = keras.models.load_model(_RECCONV_NET_PATH, custom_objects={
+        "sparse_top_k_categorical_speaker_accuracy_mfccs": sparse_top_k_categorical_speaker_accuracy_mfccs,
+        "speaker_n_states_in_top_k_accuracy_mfccs": speaker_n_states_in_top_k_accuracy_mfccs,
+        "sparse_categorical_speaker_accuracy_mfccs": sparse_categorical_speaker_accuracy_mfccs})
 
     speaker_dnnhmms = {}
     # Generate speaker DNNHMM models
@@ -117,9 +86,9 @@ def main():
         # Store the generated model in dictionary
         speaker_dnnhmms[speaker] = final_model
 
-    count = _COUNT_START_INDEX  # counter for speaker identification match
+    count = 0  # counter for speaker identification match
     # For each test set audio tensor
-    for i in range(_AUDIO_START_INDEX, test_mfccs.shape[0]):
+    for i in tqdm(range(0, test_mfccs.shape[0]), desc="Evaluating DNN-HMM performance"):
         audio = test_mfccs[i]
         labels = test_mfccs_labels[i]
         best_log_likelihood = None
@@ -131,7 +100,7 @@ def main():
         real_speaker_log_likelihood = None
 
         # For each speaker
-        for speaker in tqdm(speaker_dnnhmms, desc=f"Evaluating performance for {real_speaker}: "):
+        for speaker in speaker_dnnhmms:
             # Calculate state range
             start_range = speaker_indexes[speaker]*N_STATES_MFCCS
             end_range = start_range + N_STATES_MFCCS
@@ -139,10 +108,9 @@ def main():
             # Get speaker DNNHMM model and compute the most likely path with viterbi
             dnnhmm = speaker_dnnhmms[speaker]
             most_likely_path, most_likely_path_prob = dnnhmm.viterbi(
-                audio,
-                (start_range, end_range),
-                'log',
-                test_mel_spec[i:i+1]
+                y=audio,
+                state_range=(start_range, end_range),
+                mode='log'
             )
 
             if speaker == real_speaker:

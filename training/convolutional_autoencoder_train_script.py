@@ -9,7 +9,7 @@ from training_utils import load_dataset, TRAIN_SET_PATH_MEL_SPEC, TEST_SET_PATH_
 import tensorflow as tf
 
 
-_EPOCHS_LOAD_CONV: final = 1500
+_EPOCHS_LOAD_CONV: final = 3500
 _VERSION_LOAD_CONV: final = 1.5
 _CONV_AUTOENC_PATH: final = f"fitted_autoencoder/cnn/autoencoder_cnn_{_EPOCHS_LOAD_CONV}_epochs_v{_VERSION_LOAD_CONV}"
 
@@ -29,7 +29,7 @@ def main():
     conv_pools = [2, 2, 2]
 
     # Set model training parameters
-    epochs = 2000
+    epochs = 500
     batch_size = 100
     optimizer = Adadelta(
         learning_rate=1,  # was 10
@@ -67,7 +67,7 @@ def main():
             dropout_conv=0.5
         )
     else:
-        model = keras.models.load_model(_CONV_AUTOENC_PATH)
+        model = keras.models.load_model(_CONV_AUTOENC_PATH, custom_objects={"coeff_determination": coeff_determination})
     model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
     model.summary(expand_nested=True)
 

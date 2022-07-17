@@ -213,9 +213,11 @@ class DNNHMM(object):
             emission_model_args = [emission_model_args, *additional_model_args]
 
         # Get posterior probabilities for each observation of the sequence
-        posteriors_sequence = self.__emission_model(
-            emission_model_args
-        ).numpy()[0, :, state_range[0]:state_range[1]]
+        posteriors_sequence = self.__emission_model(emission_model_args)
+        if isinstance(posteriors_sequence, np.ndarray):
+            posteriors_sequence = posteriors_sequence[0, :, state_range[0]:state_range[1]]
+        else:
+            posteriors_sequence = posteriors_sequence.numpy()[0, :, state_range[0]:state_range[1]]
 
         # Observation prior is allotted to be a constant value since all observations are assumed to be independent, and
         # thus it can be ignored completely
