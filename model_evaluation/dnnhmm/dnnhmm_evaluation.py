@@ -1,18 +1,15 @@
-from keras import regularizers
-import tensorflow as tf
 from models.dnnhmm.dnnhmm import DNNHMM
-from models.recconvsnet.recconvsnet import RecConv1DSiameseNet, load_recconvsnet
+from models.recconvsnet.recconvsnet import load_recconvsnet
 from preprocessing.utils import compute_state_frequencies
 from typing import final
 from tqdm.auto import tqdm
-import keras
-from training.training_utils import load_dataset, one_hot_labels_to_integer_labels, get_label_number
+from training.training_utils import load_dataset, one_hot_labels_to_integer_labels
 from preprocessing.file_utils import generate_or_load_speaker_ordered_dict, load_speakers_acoustic_models, \
     load_state_frequencies, save_state_frequencies
 from preprocessing.constants import UNSPLITTED_SET_PATH_MFCCS, N_STATES_MFCCS, AUDIO_PER_SPEAKER, TEST_SET_PATH_MFCCS, \
     STATE_FREQUENCIES_PATH, TEST_SET_PATH_MEL_SPEC
 from training.training_utils import sparse_top_k_categorical_speaker_accuracy_mfccs, \
-    speaker_n_states_in_top_k_accuracy_mfccs, sparse_categorical_speaker_accuracy_mfccs
+    speaker_n_states_in_top_k_accuracy_mfccs
 
 
 _EPOCHS_LOAD_RECCONV: final = 600
