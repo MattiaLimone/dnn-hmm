@@ -3,14 +3,16 @@ import numpy as np
 import torch
 import lpctorch
 
+
 LPCC_NUM_DEFAULT: final = 13
-_FRAME_DURATION: final = .016
+_FRAME_DURATION: final = 0.016
 _FRAME_OVERLAP: final = 0.5
 
 
 def extract_lpccs(signal: np.ndarray, sr: int, n_lpcc: int = LPCC_NUM_DEFAULT) -> np.ndarray:
     """
         Extracts LPCCs for each frame of the given audio.
+
         :param signal: A Numpy Array. 1 x N audio signal to extract LPCCs from.
         :param sr: An integer. The sample rate of audio file to construct audio frames.
         :param n_lpcc: An integer. The number of LPCCs to compute (default LPCC_NUM_DEFAULT)
