@@ -20,10 +20,10 @@ _VERSION_LOAD_CONV: final = 1.5
 _VERSION_LOAD_REC: final = 1.1
 _CONV_AUTOENC_PATH: final = f"fitted_autoencoder/cnn/autoencoder_cnn_{_EPOCHS_LOAD_CONV}_epochs_v{_VERSION_LOAD_CONV}"
 _REC_AUTOENC_PATH: final = f"fitted_autoencoder/lstm/autoencoder_lstm_{_EPOCHS_LOAD_REC}_epochs_v{_VERSION_LOAD_REC}"
-
 _EPOCHS_LOAD_RECCONV: final = 1000
 _VERSION_LOAD_RECCONV: final = 1.0
-_RECCONV_NET_PATH: final = f"fitted_autoencoder/cnn/autoencoder_cnn_{_EPOCHS_LOAD_RECCONV}_epochs_v{_VERSION_LOAD_RECCONV}"
+_RECCONV_NET_PATH: final = f"fitted_autoencoder/cnn/autoencoder_cnn_{_EPOCHS_LOAD_RECCONV}_epochs_" \
+                           f"v{_VERSION_LOAD_RECCONV}"
 
 
 def main():
