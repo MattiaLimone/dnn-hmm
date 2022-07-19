@@ -165,7 +165,7 @@ def main():
         if real_speaker == best_speaker_match:
             count += 1
 
-        break
+        # break
 
     accuracy = count / test_mfccs.shape[0]
     male_accuracy = male_count / male_count_total
