@@ -10,14 +10,21 @@ from preprocessing.constants import UNSPLITTED_SET_PATH_MFCCS, N_STATES_MFCCS, A
     STATE_FREQUENCIES_PATH, TEST_SET_PATH_MEL_SPEC
 from training.training_utils import sparse_top_k_categorical_speaker_accuracy_mfccs, \
     speaker_n_states_in_top_k_accuracy_mfccs
+import re
 
 
 _EPOCHS_LOAD_RECCONV: final = 600
 _VERSION_LOAD_RECCONV: final = 1.1
 _RECCONV_NET_PATH: final = f"fitted_recconvsnet/recconvsnet_{_EPOCHS_LOAD_RECCONV}_epochs_v{_VERSION_LOAD_RECCONV}"
 _VERBOSE: final = False
-_AUDIO_START_INDEX: final = 433
-_COUNT_START_INDEX: final = 424
+_AUDIO_START_INDEX: final = 0
+_COUNT_START: final = 0
+_FEMALE_COUNT_START: final = 0
+_MALE_COUNT_START: final = 0
+_FEMALE_COUNT_START_TOTAL: final = 0
+_MALE_COUNT_START_TOTAL: final = 0
+_FEMALE_REGEX: final = re.compile("F[A-Z]{3}[0-9]")
+_MALE_REGEX: final = re.compile("M[A-Z]{3}[0-9]")
 
 
 def main():
@@ -90,7 +97,11 @@ def main():
         # Store the generated model in dictionary
         speaker_dnnhmms[speaker] = final_model
 
-    count = _COUNT_START_INDEX  # counter for speaker identification match
+    count = _COUNT_START  # counter for speaker identification match
+    male_count_total = _MALE_COUNT_START_TOTAL
+    female_count_total = _FEMALE_COUNT_START_TOTAL
+    female_count = _FEMALE_COUNT_START
+    male_count = _MALE_COUNT_START
     # For each test set audio tensor
     for i in range(_AUDIO_START_INDEX, test_mfccs.shape[0]):
         audio = test_mfccs[i]
@@ -133,20 +144,39 @@ def main():
                 print("Most Likely Path probabilities")
                 print(most_likely_path_prob)
 
-
         print(f"Real speaker: {real_speaker}, "
               f" real speaker log-likelihood: {real_speaker_log_likelihood}, "
               f"best speaker match: {best_speaker_match}, "
               f"log-likelihood: {best_log_likelihood}")
 
+        # Female count
+        if _FEMALE_REGEX.match(real_speaker):
+            if real_speaker == best_speaker_match:
+                female_count += 1
+            female_count_total += 1
+
+        # Male count
+        elif _MALE_REGEX.match(real_speaker):
+            if real_speaker == best_speaker_match:
+                male_count += 1
+            male_count_total += 1
+
+        # Total count
         if real_speaker == best_speaker_match:
             count += 1
 
         break
 
     accuracy = count / test_mfccs.shape[0]
+    male_accuracy = male_count / male_count_total
+    female_accuracy = female_count / female_count_total
+
     print(f"Number of matches: {count}")
     print(f"Accuracy: {accuracy}")
+    print(f"Number of male matches: {male_count}")
+    print(f"Accuracy: {male_accuracy}")
+    print(f"Number of female matches: {female_count}")
+    print(f"Accuracy: {female_accuracy}")
 
 
 if __name__ == "__main__":
