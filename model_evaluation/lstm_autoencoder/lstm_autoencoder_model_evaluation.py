@@ -1,7 +1,7 @@
 import keras.models
 import keras.metrics
 from typing import final
-from training.training_utils import TRAIN_SET_PATH_MFCCS, TEST_SET_PATH_MFCCS, load_dataset
+from training.training_utils import TRAIN_SET_PATH_MFCCS, TEST_SET_PATH_MFCCS, load_dataset, coeff_determination
 import tensorflow as tf
 
 _EPOCHS_LOAD_LSTM: final = 800
@@ -16,7 +16,7 @@ def main():
 
     model =  keras.models.load_model(_LSTM_NET_PATH)
 
-    metrics = [tf.keras.metrics.MeanSquaredError(),
+    metrics = [coeff_determination,
                tf.keras.metrics.MeanAbsoluteError(),
                tf.keras.metrics.RootMeanSquaredError()]
 
