@@ -133,7 +133,10 @@ def main():
             labels_test[:validation_limit]
         )
     )
-    model.evaluate(x=test_mfccs[validation_limit:], y=labels_test[validation_limit:])
+    model.evaluate(
+        x=[test_mfccs[validation_limit:], test_mel_spec[validation_limit:]],
+        y=labels_test[validation_limit:]
+    )
 
     # Save the model to file
     if retraining == 0:

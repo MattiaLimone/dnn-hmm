@@ -45,6 +45,7 @@ def main():
     # Generate or load state frequencies
     states, state_frequencies, state_relative_frequencies = None, None, None
     state_frequencies_tuple = load_state_frequencies(STATE_FREQUENCIES_PATH)
+    validation_limit = int(len(test_mfccs)/2)
 
     # If state frequencies were not generated yet
     if state_frequencies_tuple is None:
@@ -103,7 +104,7 @@ def main():
     female_count = _FEMALE_COUNT_START
     male_count = _MALE_COUNT_START
     # For each test set audio tensor
-    for i in range(_AUDIO_START_INDEX, test_mfccs.shape[0]):
+    for i in range(validation_limit + _AUDIO_START_INDEX, test_mfccs.shape[0]):
         audio = test_mfccs[i]
         labels = test_mfccs_labels[i]
         best_log_likelihood = None

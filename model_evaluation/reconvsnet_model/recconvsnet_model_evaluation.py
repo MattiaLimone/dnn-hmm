@@ -27,7 +27,7 @@ def main():
     labels_test = one_hot_labels_to_integer_labels(test_mfccs_labels)
     total_state_number = get_label_number(train_mfccs_labels)
 
-    dropout_rate = 0.5
+    validation_limit = int(len(test_mfccs)/2)
     model = load_recconvsnet(path=_RECCONV_NET_PATH, custom_objects={
         "speaker_n_states_in_top_k_accuracy_mfccs": speaker_n_states_in_top_k_accuracy_mfccs,
         "sparse_top_k_categorical_speaker_accuracy_mfccs": sparse_top_k_categorical_speaker_accuracy_mfccs
@@ -69,7 +69,10 @@ def main():
     model.predict([train_mfccs[:1], train_mel_spec[:1]])
 
     model.evaluate(x=[train_mfccs, train_mel_spec], y=labels_train)
-    model.evaluate(x=[test_mfccs, test_mel_spec], y=labels_test)
+    model.evaluate(
+        x=[test_mfccs[validation_limit:], test_mel_spec[validation_limit:]],
+        y=labels_test[validation_limit:]
+    )
 
 
 
