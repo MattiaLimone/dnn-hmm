@@ -92,6 +92,7 @@ def main():
         #speaker_n_states_in_top_k_accuracy_mfccs
     ]
     version = 1.1  # For easy saving of multiple model versions
+    validation_limit = int(len(test_mfccs)/2)
 
     # Instantiate the model and compile it
     retraining = int(input("Insert 0 for training and 1 for retraining: "))
@@ -127,9 +128,14 @@ def main():
         batch_size=batch_size,
         shuffle=True,
         callbacks=callbacks,
-        validation_data=([test_mfccs, test_mel_spec], labels_test)
+        validation_data=(
+            [test_mfccs[:validation_limit], test_mel_spec[:validation_limit]],
+            labels_test[:validation_limit]
+        )
     )
-    # Save the autoencoder to file
+    model.evaluate(x=test_mfccs[validation_limit:], y=labels_test[validation_limit:])
+
+    # Save the model to file
     if retraining == 0:
         model.save(f'fitted_recconvsnet/recconvsnet_{epochs}_epochs_v{version}')
     else:

@@ -57,6 +57,7 @@ def main():
         k=8, name='sparse_top_k_categorical_accuracy', dtype=None
     )]
     version = 0.4  # For easy saving of multiple model versions
+    validation_limit = int(len(test_mfccs)/2)
 
     # Instantiate the model and compile it
     model = rec_branch
@@ -83,8 +84,9 @@ def main():
         batch_size=batch_size,
         shuffle=True,
         callbacks=callbacks,
-        validation_data=(test_mfccs, labels_test)
+        validation_data=(test_mfccs[:validation_limit], labels_test[:validation_limit])
     )
+    model.evaluate(x=test_mfccs[validation_limit:], y=labels_test[validation_limit:])
 
     # Plot results loss
     pyplot.plot(history.history['loss'], label='train')
