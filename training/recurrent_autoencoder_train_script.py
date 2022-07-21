@@ -47,6 +47,7 @@ def main():
     ]
     metrics = [coeff_determination]
     version = 1.1  # For easy saving of multiple model versions
+    validation_limit = int(len(test_audio_tensor_numpy)/2)
 
     # Instantiate the model and compile it
     retraining = int(input("Insert 0 for training and 1 for retraining: "))
@@ -77,8 +78,10 @@ def main():
         batch_size=batch_size,
         shuffle=True,
         callbacks=callbacks,
-        validation_data=(test_audio_tensor_numpy, test_audio_tensor_numpy)
+        validation_data=(test_audio_tensor_numpy[:validation_limit], test_audio_tensor_numpy[:validation_limit])
     )
+    model.evaluate(x=test_audio_tensor_numpy[validation_limit:], y=test_audio_tensor_numpy[validation_limit:])
+
     # Plot results
     pyplot.plot(history.history['loss'], label='train')
     pyplot.plot(history.history['val_loss'], label='test')
