@@ -32,3 +32,7 @@ STATE_PROB_KEY: final = "State_Probabilities"
 # Original dataset-related constants
 DATASET_ORIGINAL_PATH: final = "data/lisa/data/timit/raw/TIMIT/"
 AUDIO_PER_SPEAKER: final = 10
+VOXCELEB_PATH: final = "data/voxceleb"
+LONGEST_TIMIT_AUDIO_PATH = "data/dummy"
+VOXCELEB_OUTPUT_PATH = "data/voxceleb"
+
