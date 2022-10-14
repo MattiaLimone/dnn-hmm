@@ -1,7 +1,8 @@
 from typing import final
+import tensorflow as tf
+
 
 # Acoustic model-related constants
-TRAIN_PERCENTAGE: final = 0.8
 N_STATES_MFCCS: final = 8  # best according to grid search
 N_MIX_MFCCS: final = 3  # best according to grid search
 N_STATES_LPCCS: final = 4
@@ -27,8 +28,25 @@ TEST_SET_PATH_MEL_SPEC: final = TEST_SET_PATH + "/mel_spec_test.pkl"
 UNSPLITTED_SET_PATH_MFCCS: final = UNSPLITTED_SET_PATH + "/mfccs.pkl"
 UNSPLITTED_SET_PATH_MEL: final = UNSPLITTED_SET_PATH + "/mel_spec.pkl"
 AUDIO_DATAFRAME_KEY: final = "Audio_Tensor"
+AUDIO_NAME_DATAFRAME_KEY: final = "audioname"
+SPEAKER_DATAFRAME_KEY: final = "speaker"
+SAMPLE_RATE_DATAFRAME_KEY: final = "sr"
 STATE_PROB_KEY: final = "State_Probabilities"
+RANDOM_SEED: final = 47
+TRAIN_PERCENTAGE: final = 0.8
+VALIDATION_PERCENTAGE: final = 0.2
+TEST_PERCENTAGE: final = 0.2
+AUTOTUNE: final = tf.data.experimental.AUTOTUNE
+
 
 # Original dataset-related constants
-DATASET_ORIGINAL_PATH: final = "data/lisa/data/timit/raw/TIMIT/"
+DATASET_ORIGINAL_PATH: final = "data/lisa/data/timit/raw/TIMIT/TEST/DR1"
 AUDIO_PER_SPEAKER: final = 10
+
+# Audio-related constants
+MAX_FRAMES_MFCCS: final = 243
+MAX_FRAMES_MEL_SPEC: final = 243
+MAX_FRAMES_LPCCS: final = 967
+MIN_FRAMES_WAVEFORM: final = 12000
+MAX_FRAMES_WAVEFORM: final = 124000
+
