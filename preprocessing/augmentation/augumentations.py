@@ -1,6 +1,6 @@
 import tensorflow as tf
 from audiomentations import Compose
-from preprocessing.augmentation.constants import AUGMENTATION_RATIO, AUGMENTATION_TRANSFORMATIONS
+from preprocessing.augmentation.constants import AUGMENTATION_RATIO, TRANSFORMATIONS
 from preprocessing.constants import AUTOTUNE
 
 
@@ -9,7 +9,7 @@ def build_augmentation_pipeline():
     It creates a pipeline of audio augmentations that will be applied to the audio files.
     :return: an augmentation pipeline.
     """
-    augmentations_pipeline = Compose(list(AUGMENTATION_TRANSFORMATIONS))
+    augmentations_pipeline = Compose(list(TRANSFORMATIONS))
     return augmentations_pipeline
 
 
