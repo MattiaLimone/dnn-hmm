@@ -3,6 +3,10 @@ from spafe.utils import preprocessing
 import soundfile as sf
 from typing import final
 from preprocessing.constants import AUDIO_PER_SPEAKER
+import ntpath
+import os
+from pydub import AudioSegment
+from pydub.utils import make_chunks
 
 
 MINIMUM_SILENCE_LENGTH: final = 500
@@ -87,3 +91,33 @@ def compute_state_frequencies(labels: np.ndarray, audios_per_speaker: int = AUDI
     states, state_frequencies = np.unique(labels, return_counts=True)
     state_relative_frequencies = state_frequencies / (labels.shape[1] * audios_per_speaker)
     return states, state_frequencies, state_relative_frequencies
+
+
+def create_chuncks(shorter_path: str, longer_path: str, export_path: str):
+    """
+    It takes a shorter audio file and a longer audio file, and then cuts the longer audio file into chunks of the same
+    length as the shorter audio file
+
+    :param shorter_path: The path to the shorter audio file
+    :type shorter_path: str
+    :param longer_path: The path to the longer audio file
+    :type longer_path: str
+    :param export_path: The path to the folder where you want to save the chunks
+    :type export_path: str
+    """
+    audio_name_ext = ntpath.basename(longer_path)
+    audio_name = os.path.splitext(audio_name_ext)[0]
+    print(audio_name)
+    shorter = AudioSegment.from_file(shorter_path, "wav")
+    longer = AudioSegment.from_file(longer_path, "wav")
+
+    duration_in_sec = len(shorter) / 1000  # Length of audio in sec
+
+    chunk_length_in_sec = duration_in_sec  # in sec
+    chunk_length_ms = chunk_length_in_sec * 1000
+    chunks = make_chunks(longer, chunk_length_ms)
+
+    for i, chunk in enumerate(chunks):
+        chunk_name = audio_name + "{0}.wav".format(i)
+        print("exporting", chunk_name)
+        chunk.export(format="wav", out_f=export_path + chunk_name)

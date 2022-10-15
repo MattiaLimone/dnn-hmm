@@ -107,24 +107,8 @@ def coeff_determination(y_true, y_pred):
 @tf.keras.utils.register_keras_serializable(package='training_utils')
 @tf.function
 def sparse_top_k_categorical_speaker_accuracy_mfccs(y_true, y_pred, k=N_STATES_MFCCS):
-    """Computes how often integer targets are in the top `k` predictions.
-
-    Standalone usage:
-    >>> y_t = [2, 1]
-    >>> y_p = [[0.1, 0.9, 0.8], [0.05, 0.95, 0]]
-    >>> m = tf.keras.metrics.sparse_top_k_categorical_accuracy(y_t, y_p, k=3)
-    >>> assert m.shape == (2,)
-    >>> m.numpy()
-    array([1., 1.], dtype=float32)
-
-    Args:
-      y_true: tensor of true targets.
-      y_pred: tensor of predicted targets.
-      k: (Optional) Number of top elements to look at for computing accuracy.
-        Defaults to 5.
-
-    Returns:
-      Sparse top K categorical accuracy value.
+    """
+    Computes how often state targets are in the top `k` predictions for a single speaker.
     """
 
     # Create empty output tensor to stack output for each audio
@@ -166,93 +150,14 @@ def sparse_top_k_categorical_speaker_accuracy_mfccs(y_true, y_pred, k=N_STATES_M
 
     return tf.cast(top_k_accuracy_total, K.floatx())
 
-
-@tf.__internal__.dispatch.add_dispatch_support
-@tf.keras.utils.register_keras_serializable(package='training_utils')
-@tf.function
-def sparse_categorical_speaker_accuracy_mfccs(y_true, y_pred, k=N_STATES_MFCCS):
-    """Computes how often integer targets are in the top `k` predictions.
-
-    Standalone usage:
-    >>> y_t = [2, 1]
-    >>> y_p = [[0.1, 0.9, 0.8], [0.05, 0.95, 0]]
-    >>> m = tf.keras.metrics.sparse_top_k_categorical_accuracy(y_t, y_p, k=3)
-    >>> assert m.shape == (2,)
-    >>> m.numpy()
-    array([1., 1.], dtype=float32)
-
-    Args:
-      y_true: tensor of true targets.
-      y_pred: tensor of predicted targets.
-      k: (Optional) Number of top elements to look at for computing accuracy.
-        Defaults to 5.
-
-    Returns:
-      Sparse top K categorical accuracy value.
-    """
-
-    # Create empty output tensor to stack output for each audio
-    speaker_state_accuracy_total_list = tf.TensorArray(dtype=tf.bool, size=0, dynamic_size=True)
-
-    for i in tf.range(tf.shape(y_true)[0]):
-
-        y_pred_audio = y_pred[i]
-        y_true_audio = y_true[i]
-
-        # Check the right range, looking the first y_true_audio element
-        first_state = tf.cast(y_true_audio[0], dtype=tf.int32)
-        start_range = tf.subtract(
-            first_state,
-            tf.math.mod(first_state, tf.convert_to_tensor(N_STATES_MFCCS))
-        )
-
-        end_range = tf.add(start_range, tf.convert_to_tensor(N_STATES_MFCCS))
-
-        speaker_state_accuracy_audio = tf.fill(tf.shape(y_true_audio), tf.convert_to_tensor(False))
-        # For each state
-        for state in tf.range(start_range, end_range):
-            y_true_audio_state = tf.fill(tf.shape(y_true_audio), state)
-
-            # Calculate top_1_accuracy vector for given audio and apply logical OR with all the other states
-            speaker_state_accuracy_audio = tf.math.logical_or(
-                speaker_state_accuracy_audio,
-                tf.compat.v1.math.in_top_k(y_pred_audio, tf.cast(y_true_audio_state, 'int32'), 1)
-            )
-        # At the end of this loop, the speaker_state_accuracy_audio vector will contain True in i-th position if at
-        # least one valid range state in the top-k most probable ones, so stack this result over the ones of the other
-        # audios
-        speaker_state_accuracy_total_list.write(
-            index=speaker_state_accuracy_total_list.size(),
-            value=speaker_state_accuracy_audio
-        )
-
-    top_k_accuracy_total = speaker_state_accuracy_total_list.stack()
-
-    return tf.cast(top_k_accuracy_total, K.floatx())
-
-
 @tf.__internal__.dispatch.add_dispatch_support
 @tf.keras.utils.register_keras_serializable(package='training_utils')
 @tf.function
 def speaker_n_states_in_top_k_accuracy_mfccs(y_true, y_pred):
-    """Computes how often integer targets are in the top `k` predictions.
 
-    Standalone usage:
-    >>> y_t = [2, 1]
-    >>> y_p = [[0.1, 0.9, 0.8], [0.05, 0.95, 0]]
-    >>> m = tf.keras.metrics.sparse_top_k_categorical_accuracy(y_t, y_p, k=3)
-    >>> assert m.shape == (2,)
-    >>> m.numpy()
-    array([1., 1.], dtype=float32)
-
-    Args:
-      y_true: tensor of true targets.
-      y_pred: tensor of predicted targets.
-      k: (Optional) Number of top elements to look at for computing accuracy.
-        Defaults to 5.
-
-    Returns:
-      Sparse top K categorical accuracy value.
+    """
+    Computes how often state targets are in the top `k` most probable one of a target speaker divided by k, 1 if k
+    states in top-k most probable, 0 if no states in the top-k most probable
     """
 
     # Create empty list to stack output for each audio
