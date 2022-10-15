@@ -11,7 +11,7 @@ random.seed(RANDOM_SEED)
 
 # Transformations-related constants
 AUGMENTATION_RATIO: final = 2
-AUGMENTATION_TRANSFORMATIONS: final = frozenset([
+TRANSFORMATIONS: final = frozenset([
     Gain(),
     GainTransition(),
     TimeStretch()
