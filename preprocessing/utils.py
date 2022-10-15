@@ -89,6 +89,8 @@ def compute_state_frequencies(labels: np.ndarray, audios_per_speaker: int = AUDI
     :return: the state ordered array, the state absolute frequencies array and the state relative frequencies array.
     """
     states, state_frequencies = np.unique(labels, return_counts=True)
+
+    # TODO: this has to be generalized to work with VoxCeleb and other non-regular dataset
     state_relative_frequencies = state_frequencies / (labels.shape[1] * audios_per_speaker)
     return states, state_frequencies, state_relative_frequencies
 

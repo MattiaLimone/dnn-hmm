@@ -72,7 +72,3 @@ def augment_waveform_dataset(dataset: tf.data.Dataset):
     dataset = dataset.concatenate(copy)
 
     return dataset
-
-
-#augumented_dataset = augment_audio_dataset(ds)
-#augumented_dataset = augumented_dataset.map(lambda y, sr: (tf.expand_dims(y, axis=0), sr))
