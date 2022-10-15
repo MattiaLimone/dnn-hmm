@@ -1,3 +1,4 @@
+import random
 from typing import final
 import tensorflow as tf
 
@@ -14,6 +15,7 @@ ACOUSTIC_MODEL_PATH_MFCCS: final = ACOUSTIC_MODEL_PATH + "mfccs/"
 ACOUSTIC_MODEL_PATH_LPCCS: final = ACOUSTIC_MODEL_PATH + "lpccs/"
 ACOUSTIC_MODEL_PATH_MEL_SPEC: final = ACOUSTIC_MODEL_PATH + "mel_spec/"
 STATE_FREQUENCIES_PATH: final = "data/state_frequencies/state_frequencies.pkl"
+
 
 # Preprocessed train/test set-related constants
 TRAIN_SET_PATH: final = "data/cleaned/train"
@@ -32,11 +34,14 @@ AUDIO_NAME_DATAFRAME_KEY: final = "audioname"
 SPEAKER_DATAFRAME_KEY: final = "speaker"
 SAMPLE_RATE_DATAFRAME_KEY: final = "sr"
 STATE_PROB_KEY: final = "State_Probabilities"
-RANDOM_SEED: final = 47
+
+# Random-related constants
 TRAIN_PERCENTAGE: final = 0.8
 VALIDATION_PERCENTAGE: final = 0.2
 TEST_PERCENTAGE: final = 0.2
 AUTOTUNE: final = tf.data.experimental.AUTOTUNE
+RANDOM_SEED: final = 47
+random.seed(RANDOM_SEED)
 
 
 # Original dataset-related constants
@@ -45,6 +50,7 @@ AUDIO_PER_SPEAKER: final = 10
 VOXCELEB_PATH: final = "data/voxceleb"
 LONGEST_TIMIT_AUDIO_PATH = "data/dummy"
 VOXCELEB_OUTPUT_PATH = "data/voxceleb"
+
 
 
 # Audio-related constants
