@@ -4,6 +4,7 @@ import scipy.sparse as sp
 import tensorflow as tf
 from tqdm.auto import tqdm
 from preprocessing.acoustic_model.gmmhmm import generate_acoustic_model, save_acoustic_model
+from preprocessing.augmentation.augumentations import augment_waveform_dataset
 from preprocessing.constants import DATASET_ORIGINAL_PATH, SPEAKER_DATAFRAME_KEY, \
     AUDIO_NAME_DATAFRAME_KEY, AUTOTUNE
 from preprocessing.dataset_transformations import create_filename_df, train_validation_test_split, \
@@ -154,7 +155,18 @@ def main():
     val_prebatch_waveform = val_prebatch.map(get_feature_waveform, num_parallel_calls=AUTOTUNE)
     test_prebatch_waveform = test_prebatch.map(get_feature_waveform, num_parallel_calls=AUTOTUNE)
 
-    # TODO: perform data augmentation on training data
+    # Ask user if they want to perform data augmentation on training data
+    answer = input("Perform data augmentation (0: no, 1: yes)? ")
+    try:
+        answer = int(answer)
+    except ValueError:
+        print("Error: insert 0 for no and 1 for yes.")
+    if answer != 0 and answer != 1:
+        print("Error: insert 0 for no and 1 for yes.")
+
+    # If the answer is yes, then perform it
+    if answer != 0:
+        train_prebatch_waveform = augment_waveform_dataset(train_prebatch_waveform)
 
     # Get audio features
     train_prebatch_mfccs = train_prebatch_waveform.map(get_feature_mfccs, num_parallel_calls=AUTOTUNE)
@@ -176,6 +188,8 @@ def main():
     # TODO: (maybe) one-hot encode the state labels
 
     # TODO: save output datasets
+
+    print("Preprocessing completed.")
 
 
 if __name__ == "__main__":
