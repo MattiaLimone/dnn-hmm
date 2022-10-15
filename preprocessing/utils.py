@@ -11,6 +11,8 @@ from pydub.utils import make_chunks
 
 MINIMUM_SILENCE_LENGTH: final = 500
 SILENCE_THRESHOLD: final = -35
+ZERO_PADDING_MODE: final = 0
+REPEATING_FRAMES_PADDING_MODE: final = 1
 
 
 def remove_silence(path: str, silence_threshold: int = SILENCE_THRESHOLD) -> (np.ndarray, int):
@@ -30,7 +32,7 @@ def remove_silence(path: str, silence_threshold: int = SILENCE_THRESHOLD) -> (np
     return data, sr
 
 
-def fill_audio_frames(audio_frames: np.ndarray, target_len: int, mode: int = 0) -> np.ndarray:
+def fill_audio_frames(audio_frames: np.ndarray, target_len: int, mode: int = ZERO_PADDING_MODE) -> np.ndarray:
     """
     Fills given audio frame array either with 0s or repeating the frames circularly.
 
@@ -43,20 +45,33 @@ def fill_audio_frames(audio_frames: np.ndarray, target_len: int, mode: int = 0) 
 
     :return: a new audio frame array filled until the target size.
     """
-    if mode != 0 and mode != 1:
+    if mode != ZERO_PADDING_MODE and mode != REPEATING_FRAMES_PADDING_MODE:
         raise ValueError("Mode must be either 0 or 1.")
 
     target_audio = np.copy(audio_frames)
-    frame_len = len(target_audio[0])
+
+    try:
+        frame_len = len(target_audio[0])
+    except TypeError:
+        frame_len = 0  # if audio is, for example, a waveform and has shape (length, )
     dist = target_len - len(target_audio)
     added_frames = 0
     fill_frame = None
 
     while added_frames < dist:
-        if mode == 0:
-            fill_frame = np.zeros(shape=(1, frame_len))
-        elif mode == 1:
-            fill_frame = np.reshape(np.array(audio_frames[added_frames % len(audio_frames)]), newshape=(1, frame_len))
+        if mode == ZERO_PADDING_MODE:
+            if frame_len > 0:
+                fill_frame = np.zeros(shape=(1, frame_len))
+            else:
+                fill_frame = np.zeros(shape=(1, ))
+        elif mode == REPEATING_FRAMES_PADDING_MODE:
+            if frame_len > 0:
+                fill_frame = np.reshape(
+                    np.array(audio_frames[added_frames % len(audio_frames)]),
+                    newshape=(1, frame_len)
+                )
+            else:
+                fill_frame = np.reshape(np.array(audio_frames[added_frames % len(audio_frames)]), newshape=(1,))
 
         target_audio = np.concatenate((target_audio, fill_frame), axis=0)
         added_frames += 1
