@@ -1,23 +1,15 @@
-import random
 import tensorflow as tf
-from audiomentations import Compose, Gain, GainTransition, TimeStretch
-from preprocessing.constants import RANDOM_SEED
-
-random.seed(RANDOM_SEED)
+from audiomentations import Compose
+from preprocessing.augmentation.constants import AUGMENTATION_RATIO, AUGMENTATION_TRANSFORMATIONS
+from preprocessing.constants import AUTOTUNE
 
 
 def build_augmentation_pipeline():
     """
-    It creates a pipeline of audio augmentations that will be applied to the audio files
-    :return: A list of augmentations
+    It creates a pipeline of audio augmentations that will be applied to the audio files.
+    :return: an augmentation pipeline.
     """
-    augmentations_pipeline = Compose(
-        [
-            Gain(),
-            GainTransition(),
-            TimeStretch()
-        ]
-    )
+    augmentations_pipeline = Compose(list(AUGMENTATION_TRANSFORMATIONS))
     return augmentations_pipeline
 
 
@@ -47,26 +39,38 @@ def tf_apply_pipeline(waveform, sr, audio_path, speaker):
     :return: The augmented feature, sampling rate, audio path, and speaker
     """
 
+    # Save the input waveform shape
     augmented_feature_shape = tf.shape(waveform)
 
+    # Apply pipeline
     augmented_feature = tf.numpy_function(
         apply_pipeline_func, inp=[waveform, sr], Tout=tf.float32, name="apply_pipeline"
     )
 
+    # Recover previous waveform shape, lost in tf.numpy_function()
     augmented_feature = tf.reshape(augmented_feature, augmented_feature_shape)
 
     return augmented_feature, sr, audio_path, speaker
 
 
-def augment_audio_dataset(dataset: tf.data.Dataset):
-    """
-    It takes a dataset of audio files and applies the augmentation pipeline to each one
+def augment_waveform_dataset(dataset: tf.data.Dataset):
 
-    :param dataset: The dataset to augment
-    :type dataset: tf.data.Dataset
-    :return: A dataset with the audio files augmented.
-    """
-    dataset = dataset.map(tf_apply_pipeline)
+    # Define identity dummy function to copy the dataset
+    def __identity(waveform, sr, audio_path, speaker):
+        return waveform, sr, audio_path, speaker
+
+    # Copy the dataset
+    copy = dataset.map(__identity, num_parallel_calls=AUTOTUNE)
+
+    # Replicate each element in dataset AUGMENTATION_RATIO times
+    copy = copy.repeat(AUGMENTATION_RATIO)
+
+    # Apply augmentation transformations
+    copy = copy.map(tf_apply_pipeline, num_parallel_calls=AUTOTUNE)
+
+    # Merge the augmented data to the original data
+    dataset = dataset.concatenate(copy)
+
     return dataset
 
 
