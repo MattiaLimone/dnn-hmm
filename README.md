@@ -2,7 +2,7 @@
 The goal of this project is to create an highily-accurate DNN-HMM system for text-independent speaker identification.
 
 # How to install the requirements
-Install the requirements using the pip utility (may require to run as sudo)-
+Install the requirements using the pip utility (may require to run as sudo).
 
 ```
 #PyPI
