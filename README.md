@@ -10,7 +10,7 @@ Install the requirements using the pip utility ( may require to run as sudo )
 pip install -r requirements.txt
 ```
 
-## Additional dependency LpcTorch2
+## Additional dependency LPCTorch2
 This library is the same as LpcTorch https://github.com/yliess86/LPCTorch with updated dependencies
 
 Use pip uitlity to install the dependency from our Repo ( may require to run as sudo )
