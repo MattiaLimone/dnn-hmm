@@ -1,130 +1,67 @@
-from typing import Optional
 import numpy as np
-import scipy.sparse as sp
 import tensorflow as tf
+from sequentia import GMMHMM
 from tqdm.auto import tqdm
+from time import time
 from preprocessing.acoustic_model.gmmhmm import generate_acoustic_model, save_acoustic_model
 from preprocessing.augmentation.augumentations import augment_waveform_dataset
 from preprocessing.constants import DATASET_ORIGINAL_PATH, SPEAKER_DATAFRAME_KEY, \
-    AUDIO_NAME_DATAFRAME_KEY, AUTOTUNE
+    AUDIO_NAME_DATAFRAME_KEY, AUTOTUNE, ACOUSTIC_MODEL_PATH_MFCCS, N_STATES_MFCCS, N_MIX_MFCCS, BUFFER_SIZE, \
+    TRAIN_WAVEFORMS, TRAIN_SET_PATH_MFCCS_TF
 from preprocessing.dataset_transformations import create_filename_df, train_validation_test_split, \
-    get_feature_waveform, get_feature_mfccs, get_feature_mel_spec, get_feature_lpccs
+    get_feature_waveform, get_feature_mfccs, get_feature_mel_spec, get_feature_lpccs, generate_state_labels_mfccs
 from preprocessing.file_utils import speaker_audio_filenames, generate_or_load_speaker_ordered_dict, \
     SPEAKER_DIR_REGEX, AUDIO_REGEX
 
 
-def _generate_speakers_acoustic_model(speakers_audios_features: dict, n_states: int, n_mix: int,
-                                      export_path: Optional[str] = None) -> (dict, dict):
+def _generate_acoustic_models(feature_dataset: tf.data.Dataset, speaker_indexes: dict, n_states: int, n_mix: int,
+                              export_path: str = ACOUSTIC_MODEL_PATH_MFCCS) -> dict[str, GMMHMM]:
     """
     Generates a trained GMM-HMM model representing the speaker's audio for each speaker's audio and stores it in a
     dictionary of speaker-acoustic_models pairs, a list containing the viterbi-calculated most likely state sequence
-    for each audio x in X (i.e. GMM-HMM state sequence y that maximizes P(y | x))audio in X and stores it in a
-    dictionary of speaker-acoustic_models_states pairs for each speaker's audio.
+    for each audio x in X (i.e. GMM-HMM state sequence y that maximizes P(y | x)) audio in X, stores it into a
+    dictionary of speaker-acoustic_model pairs for each speaker's audio, storing it into the given directory.
 
-    :param speakers_audios_features:  A dictionary of speaker-MFCCs/LPCCs/Mel-spectrogram pairs.
+    :param feature_dataset:  A dataset containing the MFCCs/LPCCs/Mel-spectrum features and the corresponding speaker.
+    :param speaker_indexes: a dictionary indicating the processing order for the speakers.
     :param n_states: number of states to generate the acoustic model.
     :param n_mix: number of mixtures for each state.
-    :param export_path: path to save the acoustic model into (by default this is None, meaning no export file will be
-        generated).
-    :return: A dictionary of speaker-acoustic_models pairs and a dictionary of speaker-acoustic_models_states pairs
+    :param export_path: path to save the acoustic model into.
+
+    :return a dictionary mapping each speaker id into corresponding acoustic model.
     """
     acoustic_models = {}
-    acoustic_model_state_labels = {}
 
-    desc = f"Generating speaker-acoustic_models with n_states: {n_states}, n_mix: {n_mix}"
-    # For each speaker
-    for speaker in tqdm(speakers_audios_features, desc=desc):
-        print(f"\nCurrent speaker: {str(speaker)}")
-        # Flatten feature matrix into array of frame features
-        speaker_audios = speakers_audios_features[speaker]
+    for speaker in tqdm(speaker_indexes):
 
-        # Extract acoustic models and frame-level labels (most likely sequence of states from viterbi algorithm)
-        acoustic_models[speaker], acoustic_model_state_labels[speaker] = generate_acoustic_model(
+        # Filter speaker sub-dataset
+        speaker_ds = feature_dataset.filter(
+            lambda features, sr, audio_path, spk: tf.equal(spk, tf.constant(speaker, dtype=tf.string))
+        )
+
+        # Create a numpy array containing all the speaker audios
+        speaker_audios = []
+        for entry in speaker_ds:
+            speaker_audios.append(entry[0].numpy())
+
+        speaker_audios = np.array(speaker_audios)
+
+        # Generate acoustic model, ignoring the labels since we'll get them later
+        acoustic_models[speaker], acoustic_model_labels = generate_acoustic_model(
             speaker_audios,
             label=speaker,
             n_states=n_states,
             n_mix=n_mix
         )
 
-        if export_path is not None:
-            path = f"{export_path}{speaker}.pkl"
-            save_acoustic_model(acoustic_models[speaker], path)
+        # Store the  acoustic model in the give path
+        path = f"{export_path}{speaker}.pkl"
+        save_acoustic_model(acoustic_models[speaker], path)
 
-    return acoustic_models, acoustic_model_state_labels
-
-
-def _one_hot_encode_state_labels(speakers_raw_state_labels: dict, speaker_indexes: dict, n_states: int) -> \
-        list[sp.lil_matrix]:
-    """
-    Generates the one-hot encoding of the frame-level state labels.
-
-    :param speakers_raw_state_labels: a dictionary of speaker-frame level state labels for each audio pairs.
-    :param speaker_indexes: a dictionary indicating the processing order for the speakers.
-    :param n_states: number of HMM states for each speaker.
-    :return: a list of scipy sparse matrices each containing the one-hot encoding of frame-level state labels for a
-        single audio.
-    """
-    speakers_global_state_labels = {}
-    n_audio = 0  # audio number counter
-    max_frames = 0  # maximum number of frames
-
-    desc = f"Generating one-hot encode state labels with for audio features with n_states: {n_states}"
-    # For each speaker
-    for speaker in tqdm(speaker_indexes, desc=desc):
-        speakers_global_state_labels[speaker] = []
-
-        # For each audio state label array of the speaker
-        for raw_audio_state_labels in speakers_raw_state_labels[speaker]:
-            global_audio_state_labels = np.array([])
-
-            # Increment audio number counter
-            n_audio += 1
-
-            # Update frame max length if needed
-            if max_frames < len(raw_audio_state_labels):
-                max_frames = len(raw_audio_state_labels)
-
-            # For all state labels of an audio, replace raw state index with global state index with formula:
-            # (n_states*speaker_index) + raw_state_label
-            for raw_state_label in raw_audio_state_labels:
-                global_state_label = (n_states * speaker_indexes[speaker]) + raw_state_label
-                global_audio_state_labels = np.append(global_audio_state_labels, global_state_label)
-
-            speakers_global_state_labels[speaker].append(global_audio_state_labels)
-
-    n_speaker = len(speakers_global_state_labels)
-
-    # Create a list to contain the n_audio sparse matrices representing the one-hot encoding of the state labels with
-    # shape max_frames x (n_states*n_speaker)
-    one_hot_encoded_state_labels = []
-
-    # For each speaker
-    for speaker in speaker_indexes:
-
-        # For each audio of the speaker
-        for global_audio_state_labels in speakers_global_state_labels[speaker]:
-
-            # Create max_frames x (n_states*n_speaker) matrix representing the one-hot encoding of the state labels
-            speaker_one_hot_encoded_state_labels = np.zeros(shape=(max_frames, n_states * n_speaker))
-
-            # For each frame of the audio
-            for frame_index in range(0, len(global_audio_state_labels)):
-
-                # Get the target most likely state for the frame according to the viterbi algorithm
-                state_index = int(global_audio_state_labels[frame_index])
-
-                # Set the corresponding component of the one-hot encode label vector to 1
-                speaker_one_hot_encoded_state_labels[frame_index, state_index] = 1
-
-            # Convert the generated one-hot encoded state labels matrix to sparse lil format and store it in the list
-            speaker_one_hot_encoded_state_labels = sp.lil_matrix(speaker_one_hot_encoded_state_labels)
-            one_hot_encoded_state_labels.append(speaker_one_hot_encoded_state_labels)
-
-    return one_hot_encoded_state_labels
+    return acoustic_models
 
 
 def main():
-
     # Get audio paths, grouped by speaker
     speakers_audios_names = speaker_audio_filenames(
         path=DATASET_ORIGINAL_PATH,
@@ -155,6 +92,24 @@ def main():
     val_prebatch_waveform = val_prebatch.map(get_feature_waveform, num_parallel_calls=AUTOTUNE)
     test_prebatch_waveform = test_prebatch.map(get_feature_waveform, num_parallel_calls=AUTOTUNE)
 
+    # Perform shuffle
+    train_prebatch_waveform = train_prebatch_waveform.shuffle(buffer_size=BUFFER_SIZE, reshuffle_each_iteration=True)
+
+    # Try to load waveform to not read all the files again
+    try:
+        train_prebatch_waveform = tf.data.experimental.load(TRAIN_WAVEFORMS)
+        print("Loaded waveforms.")
+        for el in train_prebatch_waveform:
+            print(el)
+
+    except tf.errors.NotFoundError:
+        print("Reading waveforms...")
+        tf.data.experimental.save(train_prebatch_waveform, path=TRAIN_WAVEFORMS)
+        print("Saved waveforms.")
+
+        train_prebatch_waveform = tf.data.experimental.load(TRAIN_WAVEFORMS)
+        print("Loaded waveforms.")
+
     # Ask user if they want to perform data augmentation on training data
     answer = input("Perform data augmentation (0: no, 1: yes)? ")
     try:
@@ -165,11 +120,28 @@ def main():
         print("Error: insert 0 for no and 1 for yes.")
 
     # If the answer is yes, then perform it
+    train_prebatch_waveform_no_augment = train_prebatch_waveform
     if answer != 0:
         train_prebatch_waveform = augment_waveform_dataset(train_prebatch_waveform)
 
+        # Perform shuffling
+        train_prebatch_waveform = train_prebatch_waveform.shuffle(
+            buffer_size=BUFFER_SIZE,
+            reshuffle_each_iteration=True
+        )
+
     # Get audio features
+    print("Extracting audio features...")
     train_prebatch_mfccs = train_prebatch_waveform.map(get_feature_mfccs, num_parallel_calls=AUTOTUNE)
+
+    # Save the original features if the dataset has been augmented
+    train_prebatch_mfccs_no_augment = train_prebatch_mfccs
+    if answer != 0:
+        train_prebatch_mfccs_no_augment = train_prebatch_waveform_no_augment.map(
+            get_feature_mfccs,
+            num_parallel_calls=AUTOTUNE
+        )
+
     train_prebatch_lpccs = train_prebatch_waveform.map(get_feature_lpccs, num_parallel_calls=AUTOTUNE)
     train_prebatch_mel_spec = train_prebatch_waveform.map(get_feature_mel_spec, num_parallel_calls=AUTOTUNE)
 
@@ -181,14 +153,50 @@ def main():
     test_prebatch_lpccs = test_prebatch_waveform.map(get_feature_lpccs, num_parallel_calls=AUTOTUNE)
     test_prebatch_mel_spec = test_prebatch_waveform.map(get_feature_mel_spec, num_parallel_calls=AUTOTUNE)
 
-    # TODO: generate GMM-HMM acoustic models from training data (for each speaker)
+    # Perform shuffling
+    train_prebatch_mfccs = train_prebatch_mfccs.shuffle(
+        buffer_size=BUFFER_SIZE,
+        reshuffle_each_iteration=True
+    )
+    train_prebatch_mfccs_no_augment = train_prebatch_mfccs_no_augment.shuffle(
+        buffer_size=BUFFER_SIZE,
+        reshuffle_each_iteration=True
+    )
+    train_prebatch_lpccs = train_prebatch_lpccs.shuffle(
+        buffer_size=BUFFER_SIZE,
+        reshuffle_each_iteration=True
+    )
+    train_prebatch_mel_spec = train_prebatch_mel_spec.shuffle(
+        buffer_size=BUFFER_SIZE,
+        reshuffle_each_iteration=True
+    )
+    print("Audio features extracted.")
 
-    # TODO: extract frame-level state labels applying Viterbi algorithm on each audio and the speaker's acoustic model
+    t0 = time()
+    # Generate GMM-HMM acoustic models using MFCCs extracted from training data (for each speaker)
+    acoustic_models = _generate_acoustic_models(
+        feature_dataset=train_prebatch_mfccs_no_augment,
+        speaker_indexes=speaker_indexes,
+        n_states=N_STATES_MFCCS,
+        n_mix=N_MIX_MFCCS,
+        export_path=ACOUSTIC_MODEL_PATH_MFCCS
+    )
+    t1 = time()
+    print(f"Acoustic models generated. Elapsed time: {(t1 - t0)} seconds.")
+
+    # Extract frame-level state labels applying Viterbi algorithm on each audio and the speaker's acoustic model
+    train_prebatch_mfccs = train_prebatch_mfccs.map(generate_state_labels_mfccs, num_parallel_calls=AUTOTUNE)
+    train_prebatch_mfccs = train_prebatch_mfccs.shuffle(
+        buffer_size=BUFFER_SIZE,
+        reshuffle_each_iteration=True
+    )
 
     # TODO: (maybe) one-hot encode the state labels
 
-    # TODO: save output datasets
-
+    # Save output datasets
+    print("Extracting state labels and saving results...")
+    tf.data.experimental.save(train_prebatch_mfccs, path=TRAIN_SET_PATH_MFCCS_TF)
+    # TODO: save the other datasets
     print("Preprocessing completed.")
 
 

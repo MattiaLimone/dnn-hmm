@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 import sklearn as skl
@@ -5,10 +6,12 @@ import tensorflow as tf
 from preprocessing import utils as utl
 from preprocessing.constants import AUDIO_NAME_DATAFRAME_KEY, SPEAKER_DATAFRAME_KEY, TEST_PERCENTAGE, RANDOM_SEED, \
     VALIDATION_PERCENTAGE, MAX_FRAMES_WAVEFORM, SAMPLE_RATE_DATAFRAME_KEY, MAX_FRAMES_MFCCS, MAX_FRAMES_MEL_SPEC, \
-    MAX_FRAMES_LPCCS
+    MAX_FRAMES_LPCCS, ACOUSTIC_MODEL_PATH_MFCCS, N_STATES_MFCCS
 from preprocessing.features.lpcc import LPCC_NUM_DEFAULT, extract_lpccs
 from preprocessing.features.mel import extract_mfccs, extract_mel_spectrum, MFCC_NUM_DEFAULT, \
     DERIVATIVE_ORDER_DEFAULT, MEL_FILTER_BANK_DEFAULT
+from preprocessing.acoustic_model.gmmhmm import load_acoustic_model
+from preprocessing.file_utils import generate_or_load_speaker_ordered_dict
 
 
 def create_filename_df(speakers_audios_names: dict, speaker_indexes: dict) -> pd.DataFrame:
@@ -300,3 +303,57 @@ def __get_feature_lpccs_func(waveform, sr, audio_path, speaker):
     lpccs = extract_lpccs(waveform, sr, n_lpcc=LPCC_NUM_DEFAULT)
 
     return lpccs.astype(np.float32), sr, audio_path, speaker
+
+
+def generate_state_labels_mfccs(mfccs, sr, audio_path, speaker):
+    """
+    It takes in a batch of MFCCs, and returns a batch of MFCCs, sample rates, audio paths, speakers, and state labels.
+
+    :param mfccs: the mfccs of the audio file
+    :param sr: sampling rate of the audio
+    :param audio_path: The path to the audio file
+    :param speaker: The speaker's name
+    :return: mfccs, sr, audio_path, speaker, state_labels.
+    """
+
+    # Generate labels using acoustic model
+    state_labels = tf.numpy_function(
+        __generate_state_labels_mfccs,
+        inp=[mfccs, speaker],
+        Tout=[tf.int32]
+    )[0]
+
+    # Restore shape
+    state_labels.set_shape(tf.TensorShape((MAX_FRAMES_MFCCS, )))
+    tf.cast(state_labels, tf.int32)
+
+    return mfccs, sr, audio_path, speaker, state_labels
+
+
+def __generate_state_labels_mfccs(mfccs, speaker):
+    """
+    It takes in a list of MFCCs and a speaker, and returns a list of state labels.
+
+    :param mfccs: the MFCCs of the audio file
+    :param speaker: The name of the speaker
+    :return: The state labels for the given mfccs and speaker.
+    """
+    _speaker = speaker.decode('UTF-8')
+
+    # Load acoustic model
+    acoustic_model = load_acoustic_model(f"{os.path.join(ACOUSTIC_MODEL_PATH_MFCCS, _speaker)}.pkl")
+
+    # Load speaker indexes
+    speaker_indexes = generate_or_load_speaker_ordered_dict()
+
+    # Generate labels
+    log_prob, state_labels = acoustic_model.model.decode(mfccs, algorithm='viterbi')
+
+    for i in range(0, len(state_labels)):
+        state_labels[i] = state_labels[i] + (N_STATES_MFCCS * speaker_indexes[_speaker])
+
+    return state_labels.astype(np.int32)
+
+
+
+

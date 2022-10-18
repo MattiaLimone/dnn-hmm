@@ -16,3 +16,5 @@ sklearn~=0.0
 scikit-learn~=1.1.1
 pydub==0.25.1
 audiomentations~=0.25.1
+pyroomacoustics~=0.6.0
+lpctorch2
