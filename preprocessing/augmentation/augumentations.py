@@ -29,8 +29,8 @@ def apply_pipeline_func(waveform, sr):
 @tf.function
 def tf_apply_pipeline(waveform, sr, audio_path, speaker):
     """
-    It takes in a tensor of audio data and a tensor of the sampling rate, and returns a tensor of the augmented audio data
-    and the sampling rate
+    It takes in a tensor of audio data and a tensor of the sampling rate, and returns a tensor of the augmented audio
+    data and the sampling rate.
 
     :param waveform: the audio data
     :param sr: sampling rate
