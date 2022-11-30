@@ -16,3 +16,6 @@ Use pip uitlity to install the dependency from our Repo (may require to run as s
 ```
 pip install https://github.com/Attornado/LPCTorch2/archive/refs/heads/master.zip
 ```
+## System Explaination
+
+refer to dnn-hmm-doc repository
