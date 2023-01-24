@@ -87,9 +87,12 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 
 ## Contact
 
-Mattia Limone [[https://www.linkedin.com/in/mattia-limone/](https://www.linkedin.com/in/mattia-limone/)]
-Andrea Terlizzi
-Carmine Iannotti [[](https://www.linkedin.com/in/carmine-iannotti-aa031b232/)]
+Mattia Limone [[Linkedin profile](https://www.linkedin.com/in/mattia-limone/)]
+
+Andrea Terlizzi [[Send an email](mailto:andrea.terlizzi@mail.com)]
+
+Carmine Iannotti [[Linkedin Profile](https://www.linkedin.com/in/carmine-iannotti-aa031b232/)]
+
 Luca Strefezza
 
 Project Link: [[https://github.com/your_username/repo_name](https://github.com/MattiaLimone/dnn-hmm)]
