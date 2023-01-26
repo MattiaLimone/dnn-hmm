@@ -5,6 +5,7 @@
 [![Issues][issues-shield]][issues-url]
 [![GNU General Public License v2.0][license-shield]][license-url]
 
+<div id="readme-top"></div>
 <h3 align="center">DNN-HMM system for text-independent speaker identification</h3>
 <!-- TABLE OF CONTENTS -->
 <details>
@@ -70,7 +71,6 @@ Use pip uitlity to install the dependency from our Repo (may require to run as s
 ```
 pip install https://github.com/Attornado/LPCTorch2/archive/refs/heads/master.zip
 ```
-## Usage
 
 ## Contributing
 
