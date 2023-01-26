@@ -1,11 +1,11 @@
-
+<div id="readme-top"></div>
 [![Contributors][contributors-shield]][contributors-url]
 [![Forks][forks-shield]][forks-url]
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
 [![GNU General Public License v2.0][license-shield]][license-url]
 
-<div id="readme-top"></div>
+
 <h3 align="center">DNN-HMM system for text-independent speaker identification</h3>
 <!-- TABLE OF CONTENTS -->
 <details>
