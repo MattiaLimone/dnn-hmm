@@ -96,7 +96,7 @@ Carmine Iannotti [[Linkedin Profile](https://www.linkedin.com/in/carmine-iannott
 
 Luca Strefezza
 
-Project Link: [[https://github.com/your_username/repo_name](https://github.com/MattiaLimone/dnn-hmm)]
+
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
